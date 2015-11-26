@@ -89,7 +89,7 @@ void LaserPublisher::publishLaserScan()
   //printf("laserscan: %lu readings\n", readings->size());
 
   //Modified to ignore -135 to -120 and 120 to 135 deg readings and to inverse readings to take into account the inverted position of the sensor
-  laserscan.ranges.resize(479);
+  laserscan.ranges.resize(480);
   size_t n = 0;
   int i=479;
   for(std::list<ArSensorReading*>::const_iterator r = readings->begin(); r != readings->end(); ++r)
