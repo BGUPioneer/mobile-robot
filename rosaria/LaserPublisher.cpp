@@ -87,16 +87,17 @@ void LaserPublisher::publishLaserScan()
   const std::list<ArSensorReading*> *readings = laser->getRawReadings(); 
   assert(readings);
   //printf("laserscan: %lu readings\n", readings->size());
-  laserscan.ranges.resize(readings->size());
-  size_t n = 0;
+
   //Modified to ignore -135 to -120 and 120 to 135 deg readings and to inverse readings to take into account the inverted position of the sensor
-  int i=0;
+  laserscan.ranges.resize(479);
+  size_t n = 0;
+  int i=479;
   for(std::list<ArSensorReading*>::const_iterator r = readings->begin(); r != readings->end(); ++r)
   {
     assert(*r);
     if (n>=30 && n<510){
     laserscan.ranges[i] = (*r)->getRange() / 1000.0;
-    i++;
+    i--;
     }
     ++n;
   }
