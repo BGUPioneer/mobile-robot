@@ -95,7 +95,7 @@ void LaserPublisher::publishLaserScan()
   for(std::list<ArSensorReading*>::const_iterator r = readings->begin(); r != readings->end(); ++r)
   {
     assert(*r);
-    if (n>=30 && n<510){
+    if (n>30 && n<=510){
     laserscan.ranges[i] = (*r)->getRange() / 1000.0;
     i--;
     }
