@@ -48,8 +48,8 @@ LaserPublisher::LaserPublisher(ArLaser *_l, ros::NodeHandle& _n, bool _broadcast
   
 
   laserscan.header.frame_id = "laser_frame";
-  laserscan.angle_min = ArMath::degToRad(laser->getStartDegrees());
-  laserscan.angle_max = ArMath::degToRad(laser->getEndDegrees());
+  laserscan.angle_min = ArMath::degToRad(-120);
+  laserscan.angle_max = ArMath::degToRad(120);
   //Modif for proper angle increment
   laserscan.angle_increment = ArMath::degToRad(0.50);
   //laserscan.time_increment = ?
