@@ -9,6 +9,7 @@
 class ArLaser;
 class ArTime;
 
+//Modified "/odom" to "/base_frame"
 class LaserPublisher
 {
 public:
