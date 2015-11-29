@@ -37,21 +37,22 @@ void BumperCallback(const rosaria::BumperState::ConstPtr& msg)
 
 }
 
-float DistanceThreshold=1;
+float DistanceThreshold=0.5;
 float WidthThreshold=0.5;
 void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
 {
   bool stop_bool=false;
+  sensor_msgs::PointCloud pc_out;
 
-  //tf_listener->waitForTransform("/laser_frame", (*msg).header.frame_id, (*msg).header.stamp, ros::Duration(5.0));
+  tf_listener->waitForTransform("/laser_frame", (*msg).header.frame_id, (*msg).header.stamp, ros::Duration(5.0));
+  (*tf_listener).transformPointCloud("/laser_frame", *msg, pc_out);
 
-  //(*tf_listener).transformPointCloud("/laser_frame", *msg, pc_out);
-
-  for (int i=0; (i<(*msg).points.size()) && (stop_bool==false) ;i++)
+  for (int i=0; (i<pc_out.points.size()) && (stop_bool==false) ;i++)
   {
-      if (((*msg).points[i].x < DistanceThreshold && (*msg).points[i].x >0) && (std::abs((*msg).points[i].y) < WidthThreshold/2))
+      if ((pc_out.points[i].x < DistanceThreshold && pc_out.points[i].x >0) && (std::abs(pc_out.points[i].y) < WidthThreshold/2))
       {
-          ROS_INFO("Obstacle detected by laser at : x:%f y:%f", (*msg).points[i].x , (*msg).points[i].y);
+          ROS_INFO("Obstacle detected by laser at : x:%f y:%f", pc_out.points[i].x , pc_out.points[i].y);
+          ROS_INFO("frame: %s", pc_out.header.frame_id.c_str());
           stop_bool=true;
           stop_twist.publish(zero_twist);
   }
