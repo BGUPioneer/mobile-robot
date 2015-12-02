@@ -8,81 +8,76 @@
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/LaserScan.h"
+#include "opt_msgs/TrackArray.h"
 #include <ros/console.h>
 
 #define PI 3.14159265
 
-double KpAngle=0.8;
+double KpAngle=2;
 double KpDistance=1.2;
 double DistanceTarget=1.2;
-double MaxSpeed=0.5;
+double MaxSpeed=0.8;
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
-bool ObstacleFounded=false;
 double min=1;
 double xp=0;
 double yp=0;
 double timepreviousmeasure=0;
 
+double AgeThreshold=0;
+double ConfidenceTheshold=1.1;
+double HeightTheshold=1.5;
 
+void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
+{
 
-//void personCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
-//{
+    bool validTrack=false;
 
-//    cmd_vel.linear.x = 0.0;
-//    cmd_vel.linear.y = 0.0;
-//    cmd_vel.linear.z = 0.0;
-//    cmd_vel.angular.x = 0.0;
-//  cmd_vel.angular.y = 0.0;
-//cmd_vel.angular.z = 0.0;
+    //Initialize the twist
+    cmd_vel.linear.x = 0.0;
+    cmd_vel.angular.z = 0.0;
 
-//  int i=msg->people.size();
+    //Get the number of tracks in the TrackArray
+    int nbOfTracks=msg->tracks.size();
 
+    //If at least 1 track, proceed
+    if (nbOfTracks>0) {
+        //looping throught the TrackArray
+        for(int i=0;i<nbOfTracks && !validTrack;i++){
+            //oldest track which is older than the age threshold and above the confidence threshold
+            if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
+                //Calculate angle error
+                double AngleError=atan2(msg->tracks[i].y,msg->tracks[i].x);
+                //Calculate distance error
+                double DistanceError=msg->tracks[i].distance-DistanceTarget;
+                ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
+                ROS_INFO("Height: %f", msg->tracks[i].height);
 
-//  if (i>0) {
-//      //Extract coordinates of first detected person
-//      double x=msg->people[0].pos.x;
-//      double y=msg->people[0].pos.y;
-//      //Calculate angle error
-//      double AngleError=atan2(y,x);
-//      //Calculate distance error
-//      double DistanceError=sqrt(pow(x,2)+pow(y,2));
-
-//      ROS_INFO("Robot2HumanDistance: %f", DistanceError);
-//      ROS_INFO("xperson: %f", x);
-//      ROS_INFO("yperson: %f", y);
-//      ROS_INFO("distance: %f", DistanceTarget);
-
-
-//      cmd_vel.angular.z = -AngleError*KpAngle;
-//      double linearspeed=(DistanceError-DistanceTarget)*KpDistance;
-
-//      if (linearspeed>MaxSpeed)
-//      {
-//          linearspeed=MaxSpeed;
-//      }
-
-//      if (linearspeed<0){
-//          linearspeed=0;
-//      }
-//      double Cobstacle=1;
-//      if (ObstacleFounded==true){
-//          Cobstacle=min;
-//      }
-//       //cmd_vel.linear.x = linearspeed*Cobstacle;
-//       cmd_vel.linear.x = linearspeed;
-//      }
-
-//  cmd_vel_pub.publish(cmd_vel);
-//}
+                //Set command Twist
+                cmd_vel.angular.z = AngleError*KpAngle;
+                //Avoid going backward
+                if (DistanceError>0){
+                    double command_speed=DistanceError*KpDistance;
+                    //Limit the speed
+                    if (command_speed>MaxSpeed){command_speed=MaxSpeed;}
+                    cmd_vel.linear.x = command_speed;
+                }
+                //Stop for loop
+                validTrack=true;
+            }
+        }
+    }
+    cmd_vel_pub.publish(cmd_vel);
+}
 
 int main(int argc, char **argv){
 
 
     ros::init(argc, argv, "simple_follower_kinect2");
 	 ros::NodeHandle n;
+
 	 cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
-	 //ros::Subscriber sub = n.subscribe("people_tracker_measurements", 10, personCallback);
+     ros::Subscriber sub = n.subscribe("/tracker/tracks", 10, personCallback);
 	 ros::spin();
 	  return 0;
 }
