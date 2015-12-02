@@ -37,8 +37,8 @@ void BumperCallback(const rosaria::BumperState::ConstPtr& msg)
 
 }
 
-float DistanceThreshold=0.5;
-float WidthThreshold=0.5;
+double DistanceThreshold;
+double WidthThreshold;
 void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
 {
   bool stop_bool=false;
@@ -69,6 +69,14 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "stopper");
 
   ros::NodeHandle n;
+
+  n.param("/stopper/Distance", DistanceThreshold, 0.5);
+  n.param("/stopper/Width", WidthThreshold, 0.5);
+
+  ROS_INFO("Distance: %f", DistanceThreshold);
+  ROS_INFO("Width: %f", WidthThreshold);
+
+
 
   zero_twist.linear.x=0;
   zero_twist.linear.y=0;
