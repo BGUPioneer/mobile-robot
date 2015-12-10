@@ -4,6 +4,8 @@ calibration_toolkit
 freenect_stack
 iai_kinect2
 open_ptrack
+old
+simple_navigation_goals
 .gitignore~
 
 # C++ objects and libs
