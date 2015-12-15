@@ -13,10 +13,10 @@
 
 #define PI 3.14159265
 
-double KpAngle=2;
-double KpDistance=1.2;
+double KpAngle=0.8;
+double KpDistance=0.8;
 double DistanceTarget=1.2;
-double MaxSpeed=0.8;
+double MaxSpeed=0.5;
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
 double min=1;

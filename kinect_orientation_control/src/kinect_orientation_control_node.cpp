@@ -7,7 +7,6 @@
 #include "math.h"
 #include "trajectory_msgs/JointTrajectory.h"
 #include "trajectory_msgs/JointTrajectoryPoint.h"
-#include "arbotix_msgs/SetSpeed.h"
 #include "nav_msgs/Odometry.h"
 
 
@@ -25,7 +24,7 @@ std_msgs::Float32 error_command;
 //ros::Publisher command_trajectory_pub;
 
 ros::ServiceClient setspeed_service;
-arbotix_msgs::SetSpeed setspeed_msg;
+
 
 std_msgs::Float64 pan_command;
 

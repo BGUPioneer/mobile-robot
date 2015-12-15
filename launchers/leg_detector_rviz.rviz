@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /LaserScan1
       Splitter Ratio: 0.5
     Tree Height: 775
   - Class: rviz/Selection
@@ -71,7 +72,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.01
+      Size (m): 0.04
       Style: Flat Squares
       Topic: /RosAria/S3Series_1_laserscan
       Use Fixed Frame: true
@@ -110,7 +111,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 13.7685
+      Distance: 17.2712
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
@@ -125,7 +126,7 @@ Visualization Manager:
       Pitch: 1.5698
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.0304
+      Yaw: 3.1204
     Saved: ~
 Window Geometry:
   Displays:
@@ -143,5 +144,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1855
-  X: 65
-  Y: 24
+  X: 55
+  Y: -14
