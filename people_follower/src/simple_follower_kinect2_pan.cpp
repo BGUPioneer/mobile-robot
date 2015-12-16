@@ -61,18 +61,24 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             //oldest track which is older than the age threshold and above the confidence threshold
             if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
                 //Calculate angle error
-                double AngleError=atan2(msg->tracks[i].y,msg->tracks[i].x);////////////////////////
-          //      double AngleError=atan2(msg->tracks[i].y*(sin((AngleErrorPan*180)/ PI)),msg->tracks[i].x*(cos((AngleErrorPan*180)/ PI)));///////////////////////
+            //    double AngleError=atan2(msg->tracks[i].y,msg->tracks[i].x);
+                double AngleError=atan2(msg->tracks[i].y*(sin((AngleErrorPan*180)/ PI)),msg->tracks[i].x*(cos((AngleErrorPan*180)/ PI)));
+                double xperson=msg->tracks[i].x*(cos((AngleErrorPan*180)/ PI));
+                double yperson=msg->tracks[i].y*(sin((AngleErrorPan*180)/ PI));
 
 
                 //Calculate distance error
                 double DistanceError=msg->tracks[i].distance-DistanceTarget;
+
+                //print to the console
                 ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
                 ROS_INFO("Height: %f", msg->tracks[i].height);
-                ROS_INFO("Height: %f", msg->tracks[i].distance);
-                ROS_INFO("Height: %f", msg->tracks[i].age);
-                ROS_INFO("Height: %f", AngleError);
-                ROS_INFO("Height: %f", (AngleErrorPan*180)/ PI);
+                ROS_INFO("distance: %f", msg->tracks[i].distance);
+                ROS_INFO("age: %f", msg->tracks[i].age);
+                ROS_INFO("AngleError: %f", AngleError);
+                ROS_INFO("AngleErrorPan: %f", (AngleErrorPan*180)/ PI);
+                ROS_INFO("xperson: %f", xperson);
+                ROS_INFO("yperson: %f", yperson);
 
                 //Set command Twist
   //              if(!smallError){
