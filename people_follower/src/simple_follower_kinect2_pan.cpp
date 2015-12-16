@@ -30,13 +30,16 @@ double HeightTheshold=1.5;
 double AngleErrorPan=0;
 bool smallError=false;
 double smallErrorThreshold=0.05;
+double AngleSmallError=0;
 
-//void smallErrorCallback(const std_msgs::Float32::ConstPtr& msg)
-//{
-//     double AngleSmallError=msg->data;
+void smallErrorCallback(const std_msgs::Float32::ConstPtr& msg)
+{
+     double AngleSmallError=msg->data;
 //     if (abs(AngleSmallError)<smallErrorThreshold){smallError=true;}
 //     else {smallError=false;}
-//}
+}
+
+double followingAngle;
 
 void panCallback(const std_msgs::Float32::ConstPtr& msg)
 {
@@ -62,9 +65,13 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
                 //Calculate angle error
             //    double AngleError=atan2(msg->tracks[i].y,msg->tracks[i].x);
-                double AngleError=atan2(msg->tracks[i].y*(sin((AngleErrorPan*180)/ PI)),msg->tracks[i].x*(cos((AngleErrorPan*180)/ PI)));
-                double xperson=msg->tracks[i].x*(cos((AngleErrorPan*180)/ PI));
-                double yperson=msg->tracks[i].y*(sin((AngleErrorPan*180)/ PI));
+            //    double AngleError=atan2(msg->tracks[i].y*(sin((AngleErrorPan*180)/ PI)),msg->tracks[i].x*(cos((AngleErrorPan*180)/ PI)));
+           //     double xperson=msg->tracks[i].x*(cos((AngleErrorPan*180)/ PI));
+           //     double yperson=msg->tracks[i].y*(sin((AngleErrorPan*180)/ PI));
+
+                double xperson=(msg->tracks[i].distance*(cos(((AngleErrorPan*180)/ PI)+(AngleSmallError*180/PI))));
+                double yperson=(msg->tracks[i].distance*(sin(((AngleErrorPan*180)/ PI)+(AngleSmallError*180/PI)))*(-1));
+                double AngleError=atan2(yperson,xperson);
 
 
                 //Calculate distance error
@@ -81,8 +88,10 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 ROS_INFO("yperson: %f", yperson);
 
                 //Set command Twist
-  //              if(!smallError){
-                cmd_vel.angular.z = AngleErrorPan*KpAngle;
+  //              if(smallError==true){
+              cmd_vel.angular.z = (AngleErrorPan+followingAngle)*KpAngle;
+            //    cmd_vel.angular.z = (AngleError+followingAngle)*KpAngle;
+
              //   cmd_vel.angular.z = AngleError*KpAngle;
        //         }
                 //Avoid going backward
@@ -106,13 +115,15 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 int main(int argc, char **argv){
 
 
-    ros::init(argc, argv, "simple_follower_kinect2");
+    ros::init(argc, argv, "simple_follower_kinect2_pan");
 	 ros::NodeHandle n;
+
+      n.param("/people_follower/Angle", followingAngle, 0.0);
 
 	 cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
      ros::Subscriber sub = n.subscribe("/tracker/tracks", 10, personCallback);
      ros::Subscriber sub2 = n.subscribe("/Pan_Feedback", 10, panCallback);
-//     ros::Subscriber sub3 = n.subscribe("/Pan_Error_Command", 10, smallErrorCallback);
+     ros::Subscriber sub3 = n.subscribe("/Pan_Error_Command", 10, smallErrorCallback);
 	 ros::spin();
 	  return 0;
 }
@@ -197,7 +208,7 @@ void panCallback(const std_msgs::Float32::ConstPtr& msg)
 int main(int argc, char **argv){
 
 
-    ros::init(argc, argv, "simple_follower_kinect2");
+    ros::init(argc, argv, "simple_follower_kinect2_pan");
      ros::NodeHandle n;
 
      cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
