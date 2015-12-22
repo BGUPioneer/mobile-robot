@@ -25,19 +25,29 @@ double yp=0;
 double timepreviousmeasure=0;
 
 double AgeThreshold=0;
-double ConfidenceTheshold=1.5;//1.1
+double ConfidenceTheshold=1.1;
 double HeightTheshold=1.5;
 double AngleErrorPan=0;
 bool smallError=false;
 double smallErrorThreshold=0.05;
 double AngleSmallError=0;
+double xLaserPerson=0;
+double yLaserPerson=0;
+
 
 void smallErrorCallback(const std_msgs::Float32::ConstPtr& msg)
 {
      double AngleSmallError=msg->data;
-//     if (abs(AngleSmallError)<smallErrorThreshold){smallError=true;}
-//     else {smallError=false;}
+     if (abs(AngleSmallError)<smallErrorThreshold){smallError=true;}
+     else {smallError=false;}
 }
+
+/*void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
+
+{
+     xLaserPerson=msg->people.pos.x;
+     yLaserPerson=msg->tracks[i].y;
+}*/
 
 double followingAngle;
 
@@ -88,14 +98,14 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 ROS_INFO("yperson: %f", yperson);
 
                 //Set command Twist
-  //              if(smallError==true){
+                if(smallError==true && abs(AngleErrorPan)<0.05){  //to reduce vibration around 0 angle of the kinect view, and 0 robot angle
               cmd_vel.angular.z = (AngleErrorPan+followingAngle)*KpAngle;
-            //    cmd_vel.angular.z = (AngleError+followingAngle)*KpAngle;
+          //      cmd_vel.angular.z = (AngleError+followingAngle)*KpAngle;
 
              //   cmd_vel.angular.z = AngleError*KpAngle;
-       //         }
+                }
                 //Avoid going backward
-                if (DistanceError>0){
+                if (DistanceError>0.05){  //threshold for small distance error of 0.05 meter
                     double command_speed=DistanceError*KpDistance;
                     //Limit the speed
                     if (command_speed>MaxSpeed){command_speed=MaxSpeed;}
@@ -124,6 +134,7 @@ int main(int argc, char **argv){
      ros::Subscriber sub = n.subscribe("/tracker/tracks", 10, personCallback);
      ros::Subscriber sub2 = n.subscribe("/Pan_Feedback", 10, panCallback);
      ros::Subscriber sub3 = n.subscribe("/Pan_Error_Command", 10, smallErrorCallback);
+//     ros::Subscriber sub4 = n.subscribe("/people_tracker_measurements", 10, LaserLegsCallback);
 	 ros::spin();
 	  return 0;
 }
