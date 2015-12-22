@@ -131,6 +131,8 @@ include_directories(
 add_executable(simple_follower_kinect2 src/simple_follower_kinect2.cpp)
 add_executable(simple_follower src/simple_follower.cpp)
 add_executable(simple_follower_kinect2_pan src/simple_follower_kinect2_pan.cpp)
+add_executable(simple_follower_kinect2_pan30 src/simple_follower_kinect2_pan30.cpp)
+add_executable(simple_follower_kinect2_pan60 src/simple_follower_kinect2_pan60.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -144,6 +146,12 @@ target_link_libraries(simple_follower
    ${catkin_LIBRARIES}
  )
 target_link_libraries(simple_follower_kinect2_pan
+   ${catkin_LIBRARIES}
+ )
+target_link_libraries(simple_follower_kinect2_pan30
+   ${catkin_LIBRARIES}
+ )
+target_link_libraries(simple_follower_kinect2_pan60
    ${catkin_LIBRARIES}
  )
 
