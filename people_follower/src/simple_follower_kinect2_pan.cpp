@@ -16,7 +16,7 @@
 double KpAngle=0.5;
 double KpDistance=0.5;
 double DistanceTarget=1.2;
-double MaxSpeed=0.5;
+double MaxSpeed=0.8;
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
 double min=1;
@@ -115,12 +115,24 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 //Avoid going backward
                 if (DistanceError>0.05){  //threshold for small distance error of 0.05 meter
                     double command_speed=DistanceError*KpDistance;
+                    ROS_INFO("VelocityLinear: %f", command_speed);
                     //Limit the speed
                     if (command_speed>MaxSpeed){command_speed=MaxSpeed;}
                     cmd_vel.linear.x = command_speed;
+                    ROS_INFO("VelocityLinear: %f", command_speed);
                 }
                 //Stop for loop
                 validTrack=true;
+            }
+            else{
+                ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
+                ROS_INFO("Height: %f", 0.0);
+                ROS_INFO("distance: %f", 0.0);
+                ROS_INFO("age: %f", 0.0);
+                ROS_INFO("AngleError: %f", 90.0);
+                ROS_INFO("AngleErrorPan: %f", 180.0);
+                ROS_INFO("xperson: %f", 0.0);
+                ROS_INFO("yperson: %f", 0.0);
             }
         }
     }

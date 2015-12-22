@@ -14,9 +14,9 @@
 #define PI 3.14159265
 
 double KpAngle=0.3;
-double KpDistance=0.8;
+double KpDistance=1.2;
 double DistanceTarget=0.8;
-double MaxSpeed=0.5;
+double MaxSpeed=1.2;
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
 double min=1;
@@ -121,13 +121,30 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                     cmd_vel.linear.x = command_speed;
                 }*/
                 if ((DistanceError>DistanceTarget)&&(AngleError<1.0472)){  //far and small distance
-                    double command_speed=-AngleError*KpDistance;
+                    double command_speed=(AngleError+1.0472)*KpDistance;
+
                     //Limit the speed
                     if (command_speed>MaxSpeed){command_speed=MaxSpeed;}
                     cmd_vel.linear.x = command_speed;
+                    ROS_INFO("Velocity: %f", command_speed);
                 }
+                else {double command_speed=0;
+                    cmd_vel.linear.x = command_speed;
+                    ROS_INFO("Velocity: %f", command_speed);
+                }
+
                 //Stop for loop
                 validTrack=true;
+            }
+            else{
+                ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
+                ROS_INFO("Height: %f", 0.0);
+                ROS_INFO("distance: %f", 0.0);
+                ROS_INFO("age: %f", 0.0);
+                ROS_INFO("AngleError: %f", 90.0);
+                ROS_INFO("AngleErrorPan: %f", 180.0);
+                ROS_INFO("xperson: %f", 0.0);
+                ROS_INFO("yperson: %f", 0.0);
             }
         }
     }
