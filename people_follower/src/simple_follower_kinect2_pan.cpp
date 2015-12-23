@@ -16,7 +16,7 @@
 double KpAngle=0.5;
 double KpDistance=0.5;
 double DistanceTarget=1.2;
-double MaxSpeed=0.8;
+double MaxSpeed=1.2;
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
 double min=1;
