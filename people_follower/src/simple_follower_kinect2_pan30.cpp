@@ -26,7 +26,7 @@ double timepreviousmeasure=0;
 
 double AgeThreshold=0;
 double ConfidenceTheshold=1.1;
-double HeightTheshold=1.5;
+double HeightTheshold=1.4;
 double AngleErrorPan=0;
 bool smallError=false;
 double smallErrorThreshold=0.01;

@@ -10,7 +10,7 @@
 #include "nav_msgs/Odometry.h"
 
 
-double ConfidenceTheshold=1.4;
+double ConfidenceTheshold=1.1;
 double HeightTheshold=1.4;
 int TrackedID=0;
 

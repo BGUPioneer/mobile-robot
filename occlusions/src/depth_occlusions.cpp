@@ -55,7 +55,9 @@ public:
       : it_(n)
     {
       // Subscrive to input video feed and publish output video feed
+    //  image_sub = it_.subscribe("/kinect2_head/depth_rect/image", 10, &ImageConverter::imageCallback, this);
       image_sub = it_.subscribe("/kinect2_head/ir_rect_eq/image", 10, &ImageConverter::imageCallback, this);
+
         //kinect2_head/ir_rect_eq/image
         //kinect2_head/depth_rect/image
       image_pub = it_.advertise("/image_converter/output_video", 1);
@@ -112,13 +114,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     }
 
     double xc=(xmin+xmax)/2;
-    double yc=(ymin+ymax)/2;
+    double yc=ymin+(ymax-ymin)/3; //the 1/3 upper body
 
-    double depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image?
+    double depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
     ROS_INFO("depth: %f", depth);
 
-    cv::circle(cv_ptr->image, cv::Point(xc, yc), 50, cv::Scalar(255,255,255));
-    cv::rectangle(cv_ptr->image, cv::Point(xc-50, yc - 50),	cv::Point(xc + 50, yc+50), cv::Scalar(0,0,0), CV_FILLED, 8);
+  //  cv::circle(cv_ptr->image, cv::Point(xc, yc), 50, cv::Scalar(255,255,255));
+    cv::rectangle(cv_ptr->image, cv::Point(xmin, ymin),	cv::Point(xmax, ymax), cv::Scalar(0,0,0), CV_FILLED, 8);
               cv::putText(cv_ptr->image, "test", cv::Point(xc, yc), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255,255,255), 1.7, CV_AA);
 
     // Update GUI Window
