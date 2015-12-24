@@ -98,12 +98,12 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 ROS_INFO("yperson: %f", yperson);
 
                 //Set command Twist
-                if(smallError==true && abs(AngleErrorPan)<0.05){  //to reduce vibration around 0 angle of the kinect view, and 0 robot angle
+            //    if(smallError==true ){  //to reduce vibration around 0 angle of the kinect view, and 0 robot angle  //  && abs(AngleErrorPan)<0.05
               cmd_vel.angular.z = (AngleErrorPan+followingAngle)*KpAngle;
           //      cmd_vel.angular.z = (AngleError+followingAngle)*KpAngle;
 
              //   cmd_vel.angular.z = AngleError*KpAngle;
-                }
+             //   }
                 //Avoid going backward
                 if (DistanceError>0.05){  //threshold for small distance error of 0.05 meter
                     double command_speed=DistanceError*KpDistance;
