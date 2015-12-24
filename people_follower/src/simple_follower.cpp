@@ -71,7 +71,7 @@ cmd_vel.angular.z = 0.0;
           ROS_INFO("distance: %f", DistanceTarget);
 
 
-      cmd_vel.angular.z = -AngleError*KpAngle;
+      cmd_vel.angular.z = AngleError*KpAngle;
       double linearspeed=(DistanceError-DistanceTarget)*KpDistance;
 
       if (linearspeed>MaxSpeed)
