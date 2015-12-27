@@ -68,7 +68,7 @@ cmd_vel.angular.z = 0.0;
       ROS_INFO("Robot2HumanDistance: %f", DistanceError);
       ROS_INFO("xperson: %f", x);
       ROS_INFO("yperson: %f", y);
-          ROS_INFO("distance: %f", DistanceTarget);
+      ROS_INFO("distance: %f", DistanceTarget);
 
 
       cmd_vel.angular.z = AngleError*KpAngle;
