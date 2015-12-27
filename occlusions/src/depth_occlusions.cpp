@@ -28,7 +28,7 @@ ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
 
 double AgeThreshold=0;
-double ConfidenceTheshold=1.1;
+double ConfidenceTheshold=0.8; //1.1
 double HeightTheshold=1.4;
 
 namespace enc = sensor_msgs::image_encodings;
@@ -49,22 +49,23 @@ class ImageConverter
     ros::Subscriber person_sub = n.subscribe("/tracker/tracks", 10, &ImageConverter::boxCallback, this);
 
 
-    double xmin;
-    double ymin;
-    double xmax;
-    double ymax;
+    double xmin=0;
+    double ymin=0;
+    double xmax=0;
+    double ymax=0;
     double personCentroid;
- //   double xcentroid;
- //   double ycentroid;
     double distance;
     double confidence;
     double age;
     double height;
     double xc;
     double yc;
-    double depth;
-    double depthTheshold=500;
+    float depth;
+    double depthTheshold=200.0;
     bool validTrack;
+    int nbOfTracks;
+    float temp;
+
 
 
 public:
@@ -109,10 +110,7 @@ void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){
   //  xc=(xmin+xmax)/2;
  //   yc=ymin+(ymax-ymin)/3; //the 1/3 upper body
 
-
-
-//    ROS_INFO("Depth: %d", depth);
-    ROS_INFO("xmin: %f", xmin);
+ /*   ROS_INFO("xmin: %f", xmin);
     ROS_INFO("ymin: %f", ymin);
     ROS_INFO("xmax: %f", xmax);
     ROS_INFO("ymax: %f", ymax);
@@ -120,9 +118,7 @@ void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){
     ROS_INFO("Height: %f", height);
     ROS_INFO("age: %f", age);
     ROS_INFO("distance: %f", distance);
- //   ROS_INFO("personCentroid: %f", personCentroid);
- //   ROS_INFO("xcentroid: %f", xcentroid);
- //   ROS_INFO("ycentroid: %f", ycentroid);
+*/
 validTrack=true;
 
             }
@@ -144,30 +140,56 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
       return;
     }
 
+    cv_bridge::CvImagePtr cv_ptr2;
+    try
+    {
+      cv_ptr2 = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_16UC1);//now cv_ptr2 is the matrix
+    }
+    catch (cv_bridge::Exception& e)
+    {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+      return;
+    }
 
     xc=(xmin+xmax)/2;
     yc=ymin+(ymax-ymin)/3; //the 1/3 upper body
     depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
-    ROS_INFO("depth: %f", depth);
 
-    cv::rectangle(cv_ptr->image, cv::Point(xmin, ymin),	cv::Point(xmax, ymax), red, CV_FILLED, 8);
+    ROS_INFO("depth: %f", depth);
+  //  ROS_INFO("depth1: %f", depth1);
+  //  ROS_INFO("depth2 %f", depth2);
+
+ //   cv::rectangle(cv_ptr->image, cv::Point(xmin, ymin),	cv::Point(xmax, ymax), red, CV_FILLED, 8);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-if (validTrack){
-    int left=0;
+    int countLeft=0;
     bool leftOcclusions=false;
-        for (int i=xmin;i<xc-5;i++){
-        for (int j=ymin;j<ymax;j++){
-         //   if (cv_ptr->image.at<short int>(cv::Point(i,j))<(depth-depthTheshold)){left++;}
-               if (cv_ptr->image.at<short int>(cv::Point(i,j))<(depth-depthTheshold)){left++;}
-
+ //   if (nbOfTracks>0){
+        for (short int i=xmin;i<xc-5;i++){
+            for (short int j=ymin;j<ymax-100;j++){
+            //   if (cv_ptr->image.at<short int>(cv::Point(i,j))<(depth-depthTheshold)){
+     //   depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
+        temp=cv_ptr->image.at<short int>(cv::Point(xc+100,yc+100));
+                if (temp<(depth-depthTheshold)){
+                   countLeft++;
+               }
      }
     }
-        if (left>5000)
-            {leftOcclusions=true;
-            ROS_INFO("leftOcclusions: true %f", left);}
-        else {ROS_INFO("leftOcclusions: false");}
-}
+//}
+        if (countLeft>1000&&countLeft<2500){
+            leftOcclusions=true;
+            ROS_INFO("leftOcclusions: little %d", countLeft);
+        }
+        else  if (countLeft>2500){
+            leftOcclusions=true;
+            ROS_INFO("leftOcclusions: many %d", countLeft);
+        }
+        else {ROS_INFO("leftOcclusions: false %d", countLeft);
+        ROS_INFO("temp: %f", temp);
+        ROS_INFO("depth: %f", depth);
+        }
+
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
