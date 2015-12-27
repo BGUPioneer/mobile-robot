@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(param_test)
+project(occlusions)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -8,6 +8,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  sensor_msgs
+  cv_bridge
+  image_transport
 )
 
 ## System dependencies are found with CMake's conventions
@@ -100,10 +103,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES param_test
-  CATKIN_DEPENDS roscpp rospy std_msgs
-  DEPENDS system_lib
+#  INCLUDE_DIRS include
+#  LIBRARIES occlusions
+#  CATKIN_DEPENDS roscpp rospy std_msgs
+#  DEPENDS system_lib
 )
 
 ###########
@@ -113,29 +116,34 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
-#include_directories(
-#  ${catkin_INCLUDE_DIRS}
-#)
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
 
 ## Declare a C++ library
-# add_library(param_test
-#   src/${PROJECT_NAME}/param_test.cpp
+# add_library(occlusions
+#   src/${PROJECT_NAME}/occlusions.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(param_test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(occlusions ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(param_test_node src/param_test_node.cpp)
+# add_executable(occlusions_node src/occlusions_node.cpp)
+add_executable(depth_occlusions src/depth_occlusions.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(param_test_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(occlusions_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(depth_occlusions ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(param_test_node
+# target_link_libraries(occlusions_node
+#   ${catkin_LIBRARIES}
+# )
+target_link_libraries(depth_occlusions
    ${catkin_LIBRARIES}
  )
 
@@ -154,7 +162,7 @@ add_executable(param_test_node src/param_test_node.cpp)
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS param_test param_test_node
+# install(TARGETS occlusions occlusions_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -179,7 +187,7 @@ add_executable(param_test_node src/param_test_node.cpp)
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_param_test.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_occlusions.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

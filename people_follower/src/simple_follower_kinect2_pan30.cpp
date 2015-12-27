@@ -16,7 +16,7 @@
 double KpAngle=0.5;
 double KpDistance=0.5;
 double DistanceTarget=1.2;
-double MaxSpeed=1.2;
+double MaxSpeed=0.8;
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
 double min=1;
@@ -99,15 +99,15 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 ROS_INFO("age: %f", msg->tracks[i].age);
                 ROS_INFO("AngleError: %f", AngleError);
                 ROS_INFO("AngleErrorPan: %f", (AngleErrorPan*180)/ PI);
+                ROS_INFO("VelocityAngular: %f", -(AngleError+0.5236)*KpAngle);
                 ROS_INFO("xperson: %f", xperson);
                 ROS_INFO("yperson: %f", yperson);
 
                 //Set command Twist
           //      if(smallError==false ){  //to reduce vibration around 0 angle of the kinect view, and 0 robot angle  // && abs(AngleErrorPan)<0.05
           //    cmd_vel.angular.z = (AngleErrorPan+followingAngle)*KpAngle;
-                cmd_vel.angular.z = -(AngleError)*KpAngle;
-          //      cmd_vel.angular.z = -(AngleError+0.5236)*KpAngle; //30 deg
-          //      cmd_vel.angular.z = -(AngleError+1.0472)*KpAngle; //60 deg
+                cmd_vel.angular.z = -(AngleError+0.5236)*KpAngle; //30 deg
+
 
 
              //   cmd_vel.angular.z = AngleError*KpAngle;
@@ -120,6 +120,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                     if (command_speed>MaxSpeed){command_speed=MaxSpeed;}
                     cmd_vel.linear.x = command_speed;
                     ROS_INFO("VelocityLinear: %f", command_speed);
+
                 }
                 //Stop for loop
                 validTrack=true;
@@ -145,107 +146,29 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 int main(int argc, char **argv){
 
 
-    ros::init(argc, argv, "simple_follower_kinect2_pan");
-	 ros::NodeHandle n;
+    ros::init(argc, argv, "simple_follower_kinect2_pan30");
+     ros::NodeHandle n;
 
       n.param("/people_follower/Angle", followingAngle, 0.0);
-
-	 cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
-     ros::Subscriber sub = n.subscribe("/tracker/tracks", 10, personCallback);
-     ros::Subscriber sub2 = n.subscribe("/Pan_Feedback", 10, panCallback);
-     ros::Subscriber sub3 = n.subscribe("/Pan_Error_Command", 10, smallErrorCallback);
-//     ros::Subscriber sub4 = n.subscribe("/people_tracker_measurements", 10, LaserLegsCallback);
-	 ros::spin();
-	  return 0;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-//work
-/*void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
-{
-
-    bool validTrack=false;
-
-    //Initialize the twist
-    cmd_vel.linear.x = 0.0;
-    cmd_vel.angular.z = 0.0;
-
-
-    //Get the number of tracks in the TrackArray
-    int nbOfTracks=msg->tracks.size();
-
-    //If at least 1 track, proceed
-    if (nbOfTracks>0) {
-        //looping throught the TrackArray
-        for(int i=0;i<nbOfTracks && !validTrack;i++){
-            //oldest track which is older than the age threshold and above the confidence threshold
-            if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
-                //Calculate angle error
-        //        double AngleError=atan2(msg->tracks[i].y,msg->tracks[i].x);////////////////////////
-         //       double AngleError=atan2(msg->tracks[i].y*sin((panCallback.data*180)/ PI),msg->tracks[i].x*cos((panCallback.data*180)/ PI));///////////////////////
-
-                //Calculate distance error
-                double DistanceError=msg->tracks[i].distance-DistanceTarget;
-                ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
-                ROS_INFO("Height: %f", msg->tracks[i].height);
-
-                //Set command Twist
-              //  cmd_vel.angular.z = AngleError*KpAngle;////////////////////////delete
-                //Avoid going backward
-                if (DistanceError>0){
-                    double command_speed=DistanceError*KpDistance;
-                    //Limit the speed
-                    if (command_speed>MaxSpeed){command_speed=MaxSpeed;}
-                    cmd_vel.linear.x = command_speed;
-                }
-                //Stop for loop
-                validTrack=true;
-            }
-        }
-    }
-    cmd_vel_pub.publish(cmd_vel);
-}
-
-void panCallback(const std_msgs::Float32::ConstPtr& msg)
-{
-
-    bool validTrack=false;
-
-    //Initialize the twist
- //   cmd_vel.linear.x = 0.0;
-    cmd_vel.angular.z = 0.0;
-
-                 double AngleError=msg->data;
-                //Set command Twist
-                 cmd_vel.angular.z = AngleError*KpAngle;///////////////////work
-                //Stop for loop
-                validTrack=true;
-
-    cmd_vel_pub.publish(cmd_vel);
-}
-
-
-int main(int argc, char **argv){
-
-
-    ros::init(argc, argv, "simple_follower_kinect2_pan");
-     ros::NodeHandle n;
 
      cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
      ros::Subscriber sub = n.subscribe("/tracker/tracks", 10, personCallback);
      ros::Subscriber sub2 = n.subscribe("/Pan_Feedback", 10, panCallback);
+     ros::Subscriber sub3 = n.subscribe("/Pan_Error_Command", 10, smallErrorCallback);
+//     ros::Subscriber sub4 = n.subscribe("/people_tracker_measurements", 10, LaserLegsCallback);
      ros::spin();
       return 0;
 }
-*/
+
+
+
+
+
+
+
+
+
+
+
+
+
