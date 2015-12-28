@@ -28,7 +28,7 @@ ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
 
 double AgeThreshold=0;
-double ConfidenceTheshold=0.8; //1.1
+double ConfidenceTheshold=0.6; //1.1
 double HeightTheshold=1.4;
 
 namespace enc = sensor_msgs::image_encodings;
@@ -162,11 +162,27 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
  //   cv::rectangle(cv_ptr->image, cv::Point(xmin, ymin),	cv::Point(xmax, ymax), red, CV_FILLED, 8);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    int countLeft=0;
-    bool leftOcclusions=false;
+    int countLeft= 0;
+    int downCut= round((ymax-ymin)/8);  //to cut the lower part of the person for reduce floor alarm
+    int smallOcclusions= round(((xc-xmin)/3)*(ymax-ymin)*7/8);  //detect small occlusion
+    int bigOcclusions= round(((xc-xmin)/2)*(ymax-ymin)*7/8);    //detect big occlusion
+    int marginAdd= round(10/distance);  //add margin depend on distance
+ //   int marginAdd= 0;  //add margin depend on distance
+
+  //  ROS_INFO("smallOcclusions: %d", smallOcclusions);
+  //  ROS_INFO("bigOcclusions: %d", bigOcclusions);
+
+
+    // size of a pixel depend on depth
+   // x = (X - 3.3931e+02) * z / 5.9421e+02
+   // y = (Y - 2.4274e+02) * z / 5.9421e+02
+
+
+    bool leftOcclusions= false;
  //   if (nbOfTracks>0){
-        for (short int i=xmin;i<xc-5;i++){
-            for (short int j=ymin;j<ymax-100;j++){
+    if ((age>AgeThreshold) && (confidence>ConfidenceTheshold) && (height>HeightTheshold)){
+        for (short int i=xmin-marginAdd;i<xc-5;i++){
+            for (short int j=ymin;j<ymax-downCut;j++){
             //   if (cv_ptr->image.at<short int>(cv::Point(i,j))<(depth-depthTheshold)){
      //   depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
         temp=cv_ptr->image.at<short int>(cv::Point(xc+100,yc+100));
@@ -176,19 +192,19 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
      }
     }
 //}
-        if (countLeft>1000&&countLeft<2500){
+        if (countLeft>smallOcclusions&&countLeft<bigOcclusions){
             leftOcclusions=true;
-            ROS_INFO("leftOcclusions: little %d", countLeft);
+            ROS_INFO("leftOcclusions: small %d", countLeft);
         }
-        else  if (countLeft>2500){
+        else  if (countLeft>bigOcclusions){
             leftOcclusions=true;
-            ROS_INFO("leftOcclusions: many %d", countLeft);
+            ROS_INFO("leftOcclusions: big %d", countLeft);
         }
         else {ROS_INFO("leftOcclusions: false %d", countLeft);
-        ROS_INFO("temp: %f", temp);
+   //     ROS_INFO("temp: %f", temp);
         ROS_INFO("depth: %f", depth);
         }
-
+}
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
