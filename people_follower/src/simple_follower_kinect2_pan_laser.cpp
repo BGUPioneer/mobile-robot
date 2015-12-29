@@ -13,6 +13,7 @@
 
 #include "people_msgs/PositionMeasurementArray.h"
 #include "people_msgs/PositionMeasurement.h"
+#include <occlusions/sideOcclusions.h>
 
 #define PI 3.14159265
 
@@ -27,6 +28,8 @@ class kinect2_pan_laser
     ros::Subscriber sub2;
     ros::Subscriber sub3;
     ros::Subscriber sub4;
+    ros::Subscriber sub5;
+
 
   //       cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
   //       ros::Subscriber sub1 = n.subscribe("/tracker/tracks", 10, personCallback);
@@ -51,7 +54,7 @@ class kinect2_pan_laser
          double AngleSmallError=0;
          double xLaserPerson;
          double yLaserPerson;
-         double followingAngle;
+         double followingAngle=0;  //15 deg= 0.2618 ,30 deg= 0.5236 rad, 60 deg= 1.0472 rad
          bool kinectLaserMatch=false;
          int nbOfTracksKinect;
 
@@ -65,7 +68,30 @@ public:
          sub2= n.subscribe("/Pan_Feedback", 10, &kinect2_pan_laser::panCallback, this);
          sub3= n.subscribe("/Pan_Error_Command", 10, &kinect2_pan_laser::smallErrorCallback, this);
          sub4= n.subscribe("/people_tracker_measurements", 10, &kinect2_pan_laser::LaserLegsCallback, this);
+         sub5= n.subscribe("/occlusions/sideOcclusions", 10, &kinect2_pan_laser::occlusionKinectCallback, this);
+
       }
+
+void occlusionKinectCallback(const occlusions::sideOcclusions::ConstPtr& msg)
+{
+   bool BigLeft= msg->bigLeft;
+   bool SmallLeft= msg->smallLeft;
+   bool WallLeft= msg->wallLeft;
+   bool BigRight= msg->bigRight;
+   bool SmallRight= msg->smallRight;
+   bool WallRight= msg->wallRight;
+
+   if (BigLeft){followingAngle=0.5236;}
+   if (SmallLeft){followingAngle=0.2618;}
+   if (BigRight){followingAngle=-0.5236;}
+   if (SmallRight){followingAngle=-0.2618;}
+   ROS_INFO("test: %f", BigRight);
+   ROS_INFO("angle: %f", followingAngle);
+
+
+
+   //followingAngle //15 deg= 0.2618 ,30 deg= 0.5236 rad, 60 deg= 1.0472 rad
+}
 
 void smallErrorCallback(const std_msgs::Float32::ConstPtr& msg)
 {
@@ -175,7 +201,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 //Set command Twist
           //      if(smallError==false ){  //to reduce vibration around 0 angle of the kinect view, and 0 robot angle  // && abs(AngleErrorPan)<0.05
           //    cmd_vel.angular.z = (AngleErrorPan+followingAngle)*KpAngle;
-                cmd_vel.angular.z = -(AngleError)*KpAngle;
+                cmd_vel.angular.z = -(AngleError+followingAngle)*KpAngle;
 
              //   cmd_vel.angular.z = AngleError*KpAngle;
             //    }
