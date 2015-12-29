@@ -61,7 +61,7 @@ class ImageConverter
     double xc;
     double yc;
     float depth;
-    double depthTheshold=200.0;
+    double depthTheshold=500.0;
     bool validTrack;
     int nbOfTracks;
     float temp;
@@ -161,46 +161,87 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
  //   cv::rectangle(cv_ptr->image, cv::Point(xmin, ymin),	cv::Point(xmax, ymax), red, CV_FILLED, 8);
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////left and right
     int countLeft= 0;
+    int countRight= 0;
+
     int downCut= round((ymax-ymin)/8);  //to cut the lower part of the person for reduce floor alarm
     int smallOcclusions= round(((xc-xmin)/3)*(ymax-ymin)*7/8);  //detect small occlusion
     int bigOcclusions= round(((xc-xmin)/2)*(ymax-ymin)*7/8);    //detect big occlusion
     int marginAdd= round(10/distance);  //add margin depend on distance
- //   int marginAdd= 0;  //add margin depend on distance
-
-  //  ROS_INFO("smallOcclusions: %d", smallOcclusions);
-  //  ROS_INFO("bigOcclusions: %d", bigOcclusions);
-
 
     // size of a pixel depend on depth
    // x = (X - 3.3931e+02) * z / 5.9421e+02
    // y = (Y - 2.4274e+02) * z / 5.9421e+02
 
 
-    bool leftOcclusions= false;
- //   if (nbOfTracks>0){
+    bool LeftOcclusions= false; //detect occlusion from the left (point of view of the robot)
+    bool LeftWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+    int countLeftWall= 0;
+
+    bool RightOcclusions= false; //detect occlusion from the left (point of view of the robot)
+    bool RightWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+    int countRightWall= 0;
+
     if ((age>AgeThreshold) && (confidence>ConfidenceTheshold) && (height>HeightTheshold)){
         for (short int i=xmin-marginAdd;i<xc-5;i++){
+            countLeftWall= 0;
             for (short int j=ymin;j<ymax-downCut;j++){
             //   if (cv_ptr->image.at<short int>(cv::Point(i,j))<(depth-depthTheshold)){
-     //   depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
-        temp=cv_ptr->image.at<short int>(cv::Point(xc+100,yc+100));
+        temp=cv_ptr->image.at<short int>(cv::Point(i,j));
                 if (temp<(depth-depthTheshold)){
                    countLeft++;
+                   countLeftWall++;
+                   if (countLeftWall==ymax-downCut-ymin){LeftWall=true;}
                }
      }
     }
-//}
+
+        for (short int i=xc+5;i<xmax+marginAdd;i++){
+            countRightWall= 0;
+            for (short int j=ymin;j<ymax-downCut;j++){
+            //   if (cv_ptr->image.at<short int>(cv::Point(i,j))<(depth-depthTheshold)){
+     //   depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
+        temp=cv_ptr->image.at<short int>(cv::Point(i,j));
+                if (temp<(depth-depthTheshold)){
+                   countRight++;
+                   countRightWall++;
+                   if (countRightWall==ymax-downCut-ymin){RightWall=true;}
+               }
+     }
+    }
+
+
+        ROS_INFO("LeftWall: %d", LeftWall);
+        ROS_INFO("countLeftWall: %d", countLeftWall);
+
+
         if (countLeft>smallOcclusions&&countLeft<bigOcclusions){
-            leftOcclusions=true;
-            ROS_INFO("leftOcclusions: small %d", countLeft);
+            LeftOcclusions=true;
+            ROS_INFO("LeftOcclusions: small %d", countLeft);
         }
         else  if (countLeft>bigOcclusions){
-            leftOcclusions=true;
-            ROS_INFO("leftOcclusions: big %d", countLeft);
+            LeftOcclusions=true;
+            ROS_INFO("LeftOcclusions: big %d", countLeft);
         }
-        else {ROS_INFO("leftOcclusions: false %d", countLeft);
+        else {ROS_INFO("LeftOcclusions: false %d", countLeft);
+   //     ROS_INFO("temp: %f", temp);
+        ROS_INFO("depth: %f", depth);
+        }
+
+        ROS_INFO("RightWall: %d", RightWall);
+        ROS_INFO("countRightWall: %d", countRightWall);
+
+
+        if (countRight>smallOcclusions&&countRight<bigOcclusions){
+            RightOcclusions=true;
+            ROS_INFO("RightOcclusions: small %d", countRight);
+        }
+        else  if (countRight>bigOcclusions){
+            RightOcclusions=true;
+            ROS_INFO("RightOcclusions: big %d", countRight);
+        }
+        else {ROS_INFO("RightOcclusions: false %d", countRight);
    //     ROS_INFO("temp: %f", temp);
         ROS_INFO("depth: %f", depth);
         }
@@ -208,6 +249,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
     // Update GUI Window
     cv::imshow(OPENCV_WINDOW, cv_ptr->image);
