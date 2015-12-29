@@ -1,0 +1,7 @@
+
+bool smallLeft
+bool bigLeft
+bool wallLeft
+bool smallRight
+bool bigRight
+bool wallRight

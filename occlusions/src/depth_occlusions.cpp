@@ -15,6 +15,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 #include "opt_msgs/DetectionArray.h"
+#include <occlusions/sideOcclusions.h>
 
 
 #include <opencv2/imgproc/imgproc.hpp>
@@ -24,8 +25,11 @@
 
 cv::Scalar red(0,255,0);
 
+
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
+occlusions::sideOcclusions bool_msg;
+
 
 double AgeThreshold=0;
 double ConfidenceTheshold=0.6; //1.1
@@ -42,12 +46,13 @@ class ImageConverter
     image_transport::Subscriber image_sub;
     image_transport::Publisher image_pub;
 
+
   //  opt_msgs::DetectionArray opt_[];
  //   opt_msgs::TrackArray opt_[];
   //  ros::Subscriber person_sub = n.subscribe("/detector/detections", 10, &ImageConverter::boxCallback, this);
   //  ros::Subscriber sub = n.subscribe("/tracker/tracks", 10, &ImageConverter::personCallback, this);
     ros::Subscriber person_sub = n.subscribe("/tracker/tracks", 10, &ImageConverter::boxCallback, this);
-
+    ros::Publisher side= (n.advertise<occlusions::sideOcclusions>("occlusions/sideOcclusions",10));
 
     double xmin=0;
     double ymin=0;
@@ -162,8 +167,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
  //   cv::rectangle(cv_ptr->image, cv::Point(xmin, ymin),	cv::Point(xmax, ymax), red, CV_FILLED, 8);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////left and right
-    int countLeft= 0;
-    int countRight= 0;
+
 
     int downCut= round((ymax-ymin)/8);  //to cut the lower part of the person for reduce floor alarm
     int smallOcclusions= round(((xc-xmin)/3)*(ymax-ymin)*7/8);  //detect small occlusion
@@ -174,12 +178,16 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
    // x = (X - 3.3931e+02) * z / 5.9421e+02
    // y = (Y - 2.4274e+02) * z / 5.9421e+02
 
+    int countLeft= 0;
+    int countRight= 0;
 
-    bool LeftOcclusions= false; //detect occlusion from the left (point of view of the robot)
+    bool smallLeftOcclusions= false; //detect occlusion from the left (point of view of the robot)
+    bool bigLeftOcclusions= false; //detect occlusion from the left (point of view of the robot)
     bool LeftWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
     int countLeftWall= 0;
 
-    bool RightOcclusions= false; //detect occlusion from the left (point of view of the robot)
+    bool smallRightOcclusions= false; //detect occlusion from the left (point of view of the robot)
+    bool bigRightOcclusions= false; //detect occlusion from the left (point of view of the robot)
     bool RightWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
     int countRightWall= 0;
 
@@ -194,7 +202,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
                    countLeftWall++;
                    if (countLeftWall==ymax-downCut-ymin){LeftWall=true;}
                }
-     }
+     }         
     }
 
         for (short int i=xc+5;i<xmax+marginAdd;i++){
@@ -217,11 +225,11 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 
         if (countLeft>smallOcclusions&&countLeft<bigOcclusions){
-            LeftOcclusions=true;
+            smallLeftOcclusions=true;
             ROS_INFO("LeftOcclusions: small %d", countLeft);
         }
         else  if (countLeft>bigOcclusions){
-            LeftOcclusions=true;
+            bigLeftOcclusions=true;
             ROS_INFO("LeftOcclusions: big %d", countLeft);
         }
         else {ROS_INFO("LeftOcclusions: false %d", countLeft);
@@ -234,11 +242,11 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 
         if (countRight>smallOcclusions&&countRight<bigOcclusions){
-            RightOcclusions=true;
+            smallRightOcclusions=true;
             ROS_INFO("RightOcclusions: small %d", countRight);
         }
         else  if (countRight>bigOcclusions){
-            RightOcclusions=true;
+            bigRightOcclusions=true;
             ROS_INFO("RightOcclusions: big %d", countRight);
         }
         else {ROS_INFO("RightOcclusions: false %d", countRight);
@@ -247,16 +255,22 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         }
 }
 
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
     // Update GUI Window
-    cv::imshow(OPENCV_WINDOW, cv_ptr->image);
-    cv::waitKey(3);
+//    cv::imshow(OPENCV_WINDOW, cv_ptr->image);
+//    cv::waitKey(3);
 
     // Output modified video stream
-    image_pub.publish(cv_ptr->toImageMsg());
+//    image_pub.publish(cv_ptr->toImageMsg());
+
+  //publish the boolians variables
+    bool_msg.bigLeft=bigLeftOcclusions;
+    bool_msg.smallLeft=smallLeftOcclusions;
+    bool_msg.wallLeft=LeftWall;
+    bool_msg.bigRight=bigRightOcclusions;
+    bool_msg.smallRight=smallRightOcclusions;
+    bool_msg.wallRight=RightWall;
+
+    side.publish(bool_msg);
 
     }
 };
