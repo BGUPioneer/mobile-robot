@@ -170,14 +170,16 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
 
                 //Calculate angle error
-                float xperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(cos(AngleErrorPan));
-                float yperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(sin(AngleErrorPan));
+            //    float xperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(cos(AngleErrorPan));
+            //    float yperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(sin(AngleErrorPan));
+                float xperson=((msg->tracks[i].distance)*cos(AngleSmallError+AngleErrorPan));
+                float yperson=((msg->tracks[i].distance)*sin(AngleSmallError+AngleErrorPan));
                 double AngleError=atan2(yperson,xperson);
 
                 double error= sqrt(pow(xperson-xLaserPerson,2)+pow(yperson-yLaserPerson,2));  //calculate the x and y error between the kinect and the laser
                 ROS_INFO("error: %f", error);
 
-                if (error<0.25){
+                if (error<0.2){
                     kinectLaserMatch=true;
                     ROS_INFO("match: %d", kinectLaserMatch);
                 }

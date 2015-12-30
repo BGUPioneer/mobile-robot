@@ -81,13 +81,12 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
            //     double xperson=msg->tracks[i].x*(cos((AngleErrorPan*180)/ PI));
            //     double yperson=msg->tracks[i].y*(sin((AngleErrorPan*180)/ PI));
 
-              //  double xperson=(msg->tracks[i].distance*(cos(((AngleErrorPan*180)/ PI)+(AngleSmallError*180/PI))));
-              //  double yperson=(msg->tracks[i].distance*(sin(((AngleErrorPan*180)/ PI)+(AngleSmallError*180/PI)))*(-1));
-
-                float xperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(cos(AngleErrorPan));
-                float yperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(sin(AngleErrorPan));
+                //Calculate angle error
+            //    float xperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(cos(AngleErrorPan));
+            //    float yperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(sin(AngleErrorPan));
+                float xperson=((msg->tracks[i].distance)*cos(AngleSmallError+AngleErrorPan));
+                float yperson=((msg->tracks[i].distance)*sin(AngleSmallError+AngleErrorPan));
                 double AngleError=atan2(yperson,xperson);
-
 
                 //Calculate distance error
                 double DistanceError=msg->tracks[i].distance-DistanceTarget;
