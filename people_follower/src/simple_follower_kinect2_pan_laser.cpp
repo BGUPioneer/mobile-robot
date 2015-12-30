@@ -18,7 +18,7 @@
 
 #define PI 3.14159265
 
-ros::Publisher cmd_vel_pub;
+//ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
 
 class kinect2_pan_laser
@@ -30,6 +30,7 @@ class kinect2_pan_laser
     ros::Subscriber sub4;
     ros::Subscriber sub5;
     ros::Subscriber sub6;
+    ros::Publisher cmd_vel_pub;
 
          double KpAngle=0.5;
          double KpDistance=0.5;
@@ -58,7 +59,7 @@ class kinect2_pan_laser
          bool SmallRight;
          bool WallRight;
          bool laser_obstacle;
-         double laser_angular_velocity;
+         double laser_angular_velocity=0;
 
 public:
       kinect2_pan_laser()
@@ -70,6 +71,7 @@ public:
          sub4= n.subscribe("/people_tracker_measurements", 10, &kinect2_pan_laser::LaserLegsCallback, this);
          sub5= n.subscribe("/occlusions/sideOcclusions", 10, &kinect2_pan_laser::occlusionKinectCallback, this);
          sub6= n.subscribe("/obstacles/laserObstacles", 10, &kinect2_pan_laser::LaserObstaclesCallback, this);
+         cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
       }
 
 void occlusionKinectCallback(const occlusions::sideOcclusions::ConstPtr& msg)

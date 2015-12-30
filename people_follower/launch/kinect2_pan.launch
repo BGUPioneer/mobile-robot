@@ -4,11 +4,6 @@
 
 <include file="$(find tracking)/launch/detection_and_tracking_kinect2.launch"/>
 
-<node pkg="rosserial_python" type="serial_node.py" name="serial_node.py" />
-	<param name="port" type="str" value="/dev/ttyUSB0" />
-	<param name="baud" type="int" value="250000" />
-	
-
 	<param name="Start_Stop_Pan" value="true" />
 
 	<node pkg="kinect_orientation_control" type="kinect_orientation_control_node" name="kinect_orientation_control_node" />

@@ -32,16 +32,17 @@ class LaserObstacles
     double WidthCheck= 0.4;  //for each side
     double angularVelocity;
     double linearVelocity;
-    double angularCommand;
-    double XclosestObstacle=100.0;
-    double YclosestObstacle=100.0;
-    double DclosestObstacle=100.0;
 
 
-    void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
+
+void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
 {
   sensor_msgs::PointCloud pc_out;
   bool obstacle=false;
+  double angularCommand;
+  double XclosestObstacle=100.0;
+  double YclosestObstacle=100.0;
+  double DclosestObstacle=100.0;
 
   tf_listener.waitForTransform("/laser_frame", (*msg).header.frame_id, (*msg).header.stamp, ros::Duration(5.0));
   tf_listener.transformPointCloud("/laser_frame", *msg, pc_out);
@@ -66,18 +67,20 @@ class LaserObstacles
         }
       }
   }
-  //if obstacle from the left than turn right
+  //if obstacle from the left than turn right (positive angular velocity)
   if (YclosestObstacle>=0){
-  angularCommand=-(WidthCheck-YclosestObstacle);
+  angularCommand=WidthCheck-YclosestObstacle;
   }
-  //if obstacle from the right than turn left
+  //if obstacle from the right than turn left (negative angular velocity)
   else {
-      angularCommand=WidthCheck+YclosestObstacle;
+      angularCommand=-(WidthCheck+YclosestObstacle);
   }
   //publish the variables
     ob_msg.detect_obstacles=obstacle;
     ob_msg.angular_velocity= angularCommand;
     pub.publish(ob_msg);
+    ROS_INFO("angularCommand :%f", angularCommand);
+
 }
 
 

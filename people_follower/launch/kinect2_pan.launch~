@@ -6,8 +6,8 @@
 
 <node pkg="rosserial_python" type="serial_node.py" name="serial_node.py" />
 	<param name="port" type="str" value="/dev/ttyUSB0" />
-//	<param name="baud" type="int" value="250000" />
-	</node>
+	<param name="baud" type="int" value="250000" />
+	
 
 	<param name="Start_Stop_Pan" value="true" />
 
