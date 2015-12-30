@@ -25,11 +25,9 @@
 
 cv::Scalar red(0,255,0);
 
-
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
 occlusions::sideOcclusions bool_msg;
-
 
 double AgeThreshold=0;
 double ConfidenceTheshold=0.6; //1.1
@@ -46,11 +44,6 @@ class ImageConverter
     image_transport::Subscriber image_sub;
     image_transport::Publisher image_pub;
 
-
-  //  opt_msgs::DetectionArray opt_[];
- //   opt_msgs::TrackArray opt_[];
-  //  ros::Subscriber person_sub = n.subscribe("/detector/detections", 10, &ImageConverter::boxCallback, this);
-  //  ros::Subscriber sub = n.subscribe("/tracker/tracks", 10, &ImageConverter::personCallback, this);
     ros::Subscriber person_sub = n.subscribe("/tracker/tracks", 10, &ImageConverter::boxCallback, this);
     ros::Publisher side= (n.advertise<occlusions::sideOcclusions>("occlusions/sideOcclusions",10));
 
@@ -71,20 +64,13 @@ class ImageConverter
     int nbOfTracks;
     float temp;
 
-
-
 public:
     ImageConverter()
       : it_(n)
     {
-      // Subscrive to input video feed and publish output video feed
       image_sub = it_.subscribe("/kinect2_head/depth_rect/image", 10, &ImageConverter::imageCallback, this);
     //  image_sub = it_.subscribe("/kinect2_head/ir_rect_eq/image", 10, &ImageConverter::imageCallback, this);
-
-        //kinect2_head/ir_rect_eq/image
-        //kinect2_head/depth_rect/image
       image_pub = it_.advertise("/image_converter/output_video", 1);
-
 
       cv::namedWindow(OPENCV_WINDOW);
     }
@@ -111,9 +97,6 @@ void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){
     confidence=msg->tracks[i].confidence;
     height=msg->tracks[i].height;
     age=msg->tracks[i].age;
-
-  //  xc=(xmin+xmax)/2;
- //   yc=ymin+(ymax-ymin)/3; //the 1/3 upper body
 
  /*   ROS_INFO("xmin: %f", xmin);
     ROS_INFO("ymin: %f", ymin);
@@ -164,11 +147,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
   //  ROS_INFO("depth1: %f", depth1);
   //  ROS_INFO("depth2 %f", depth2);
 
- //   cv::rectangle(cv_ptr->image, cv::Point(xmin, ymin),	cv::Point(xmax, ymax), red, CV_FILLED, 8);
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////left and right
-
-
+//left and right detections
     int downCut= round((ymax-ymin)/8);  //to cut the lower part of the person for reduce floor alarm
     int smallOcclusions= round(((xc-xmin)/3)*(ymax-ymin)*7/8);  //detect small occlusion
     int bigOcclusions= round(((xc-xmin)/2)*(ymax-ymin)*7/8);    //detect big occlusion
@@ -195,34 +174,29 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         for (short int i=xmin-marginAdd;i<xc-5;i++){
             countLeftWall= 0;
             for (short int j=ymin;j<ymax-downCut;j++){
-            //   if (cv_ptr->image.at<short int>(cv::Point(i,j))<(depth-depthTheshold)){
         temp=cv_ptr->image.at<short int>(cv::Point(i,j));
                 if (temp<(depth-depthTheshold)){
                    countLeft++;
                    countLeftWall++;
                    if (countLeftWall==ymax-downCut-ymin){LeftWall=true;}
                }
-     }         
+        }
     }
 
         for (short int i=xc+5;i<xmax+marginAdd;i++){
             countRightWall= 0;
             for (short int j=ymin;j<ymax-downCut;j++){
-            //   if (cv_ptr->image.at<short int>(cv::Point(i,j))<(depth-depthTheshold)){
-     //   depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
         temp=cv_ptr->image.at<short int>(cv::Point(i,j));
                 if (temp<(depth-depthTheshold)){
                    countRight++;
                    countRightWall++;
                    if (countRightWall==ymax-downCut-ymin){RightWall=true;}
                }
-     }
+        }
     }
-
 
         ROS_INFO("LeftWall: %d", LeftWall);
         ROS_INFO("countLeftWall: %d", countLeftWall);
-
 
         if (countLeft>smallOcclusions&&countLeft<bigOcclusions){
             smallLeftOcclusions=true;
@@ -233,13 +207,11 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
             ROS_INFO("LeftOcclusions: big %d", countLeft);
         }
         else {ROS_INFO("LeftOcclusions: false %d", countLeft);
-   //     ROS_INFO("temp: %f", temp);
         ROS_INFO("depth: %f", depth);
         }
 
         ROS_INFO("RightWall: %d", RightWall);
         ROS_INFO("countRightWall: %d", countRightWall);
-
 
         if (countRight>smallOcclusions&&countRight<bigOcclusions){
             smallRightOcclusions=true;
@@ -250,17 +222,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
             ROS_INFO("RightOcclusions: big %d", countRight);
         }
         else {ROS_INFO("RightOcclusions: false %d", countRight);
-   //     ROS_INFO("temp: %f", temp);
         ROS_INFO("depth: %f", depth);
         }
 }
-
-    // Update GUI Window
-//    cv::imshow(OPENCV_WINDOW, cv_ptr->image);
-//    cv::waitKey(3);
-
-    // Output modified video stream
-//    image_pub.publish(cv_ptr->toImageMsg());
 
   //publish the boolians variables
     bool_msg.bigLeft=bigLeftOcclusions;
@@ -271,21 +235,16 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     bool_msg.wallRight=RightWall;
 
     side.publish(bool_msg);
-
     }
 };
-int main(int argc, char **argv){
 
+
+int main(int argc, char **argv){
 
     ros::init(argc, argv, "image_converter");
     ImageConverter ic;
     ros::NodeHandle n;
 
-//     ros::Subscriber sub = n.subscribe("/kinect2_head/depth_rect/image", 10, &ImageConverter::imageCallback, &ImageConverter);
-//     ros::Subscriber sub1 = n.subscribe("/detector/detections", 10, &ImageConverter::boxCallback, &ImageConverter);
-
-     //kinect2_head/ir_rect_eq/image
-//kinect2_head/depth_rect/image
 	 ros::spin();
 	  return 0;
 }

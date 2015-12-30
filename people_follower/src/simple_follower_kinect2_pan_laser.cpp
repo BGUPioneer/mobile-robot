@@ -14,12 +14,12 @@
 #include "people_msgs/PositionMeasurementArray.h"
 #include "people_msgs/PositionMeasurement.h"
 #include <occlusions/sideOcclusions.h>
+#include <obstacles/laserObstacles.h>
 
 #define PI 3.14159265
 
-//ros::Publisher cmd_vel_pub;
+ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
-
 
 class kinect2_pan_laser
 {
@@ -29,13 +29,7 @@ class kinect2_pan_laser
     ros::Subscriber sub3;
     ros::Subscriber sub4;
     ros::Subscriber sub5;
-
-
-  //       cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
-  //       ros::Subscriber sub1 = n.subscribe("/tracker/tracks", 10, personCallback);
-  //       ros::Subscriber sub2 = n.subscribe("/Pan_Feedback", 10, panCallback);
-  //       ros::Subscriber sub3 = n.subscribe("/Pan_Error_Command", 10, smallErrorCallback);
-  //       ros::Subscriber sub4 = n.subscribe("/people_tracker_measurements", 10, LaserLegsCallback);
+    ros::Subscriber sub6;
 
          double KpAngle=0.5;
          double KpDistance=0.5;
@@ -57,8 +51,14 @@ class kinect2_pan_laser
          double followingAngle=0;  //15 deg= 0.2618 ,30 deg= 0.5236 rad, 60 deg= 1.0472 rad
          bool kinectLaserMatch=false;
          int nbOfTracksKinect;
-
-
+         bool BigLeft;
+         bool SmallLeft;
+         bool WallLeft;
+         bool BigRight;
+         bool SmallRight;
+         bool WallRight;
+         bool laser_obstacle;
+         double laser_angular_velocity;
 
 public:
       kinect2_pan_laser()
@@ -69,28 +69,32 @@ public:
          sub3= n.subscribe("/Pan_Error_Command", 10, &kinect2_pan_laser::smallErrorCallback, this);
          sub4= n.subscribe("/people_tracker_measurements", 10, &kinect2_pan_laser::LaserLegsCallback, this);
          sub5= n.subscribe("/occlusions/sideOcclusions", 10, &kinect2_pan_laser::occlusionKinectCallback, this);
-
+         sub6= n.subscribe("/obstacles/laserObstacles", 10, &kinect2_pan_laser::LaserObstaclesCallback, this);
       }
 
 void occlusionKinectCallback(const occlusions::sideOcclusions::ConstPtr& msg)
 {
-   bool BigLeft= msg->bigLeft;
-   bool SmallLeft= msg->smallLeft;
-   bool WallLeft= msg->wallLeft;
-   bool BigRight= msg->bigRight;
-   bool SmallRight= msg->smallRight;
-   bool WallRight= msg->wallRight;
+   BigLeft= msg->bigLeft;
+   SmallLeft= msg->smallLeft;
+   WallLeft= msg->wallLeft;
+   BigRight= msg->bigRight;
+   SmallRight= msg->smallRight;
+   WallRight= msg->wallRight;
 
    if (BigLeft){followingAngle=0.5236;}
    if (SmallLeft){followingAngle=0.2618;}
    if (BigRight){followingAngle=-0.5236;}
    if (SmallRight){followingAngle=-0.2618;}
-   ROS_INFO("test: %f", BigRight);
-   ROS_INFO("angle: %f", followingAngle);
-
-
 
    //followingAngle //15 deg= 0.2618 ,30 deg= 0.5236 rad, 60 deg= 1.0472 rad
+}
+
+void LaserObstaclesCallback(const obstacles::laserObstacles::ConstPtr& msg)
+{
+    laser_obstacle=msg->detect_obstacles;
+    laser_angular_velocity=msg->angular_velocity;
+    ROS_INFO("laser_obstacle: %d", laser_obstacle);
+    ROS_INFO("laser_angular_velocity: %f", laser_angular_velocity);
 }
 
 void smallErrorCallback(const std_msgs::Float32::ConstPtr& msg)
@@ -101,7 +105,6 @@ void smallErrorCallback(const std_msgs::Float32::ConstPtr& msg)
 }
 
 void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
-
 {
     cmd_vel.linear.x = 0.0;
     cmd_vel.angular.z = 0.0;
@@ -121,7 +124,6 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        //Calculate distance error
        double DistanceErrorLaser=sqrt(pow(xLaserPerson,2)+pow(yLaserPerson,2));
 
-
        cmd_vel.angular.z = AngleErrorLaser*KpAngle;
        double linearspeedLaser=(DistanceErrorLaser-DistanceTarget)*KpDistance;
 
@@ -133,18 +135,12 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        if (linearspeedLaser<0){
            linearspeedLaser=0;
        }
- //      double Cobstacle=1;
- //      if (ObstacleFounded==true){
-  //         Cobstacle=min;
- //      }
-        //cmd_vel.linear.x = linearspeed*Cobstacle;
         cmd_vel.linear.x = linearspeedLaser;
        }
      }
 
- //  cmd_vel_pub.publish(cmd_vel);
+   cmd_vel_pub.publish(cmd_vel);
 }
-
 
 void panCallback(const std_msgs::Float32::ConstPtr& msg)
 {
@@ -183,8 +179,6 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                     kinectLaserMatch=true;
                     ROS_INFO("match: %d", kinectLaserMatch);
                 }
-
-
 
                 //Calculate distance error
                 double DistanceError=msg->tracks[i].distance-DistanceTarget;
@@ -232,7 +226,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             }
         }
     }
- //   cmd_vel_pub.publish(cmd_vel);
+    cmd_vel_pub.publish(cmd_vel);
 }
 
 
@@ -240,17 +234,12 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 
 int main(int argc, char **argv){
 
-
     ros::init(argc, argv, "simple_follower_kinect2_pan_laser");
     kinect2_pan_laser kpl;
     ros::NodeHandle n;
 
-//      n.param("/people_follower/Angle", followingAngle, 0.0);
-
- //    cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
-
-     ros::spin();
-      return 0;
+    ros::spin();
+    return 0;
 }
 
 

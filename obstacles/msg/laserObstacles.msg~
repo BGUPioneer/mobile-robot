@@ -1,0 +1,3 @@
+
+bool detect_obstacles
+double angular_velocity
