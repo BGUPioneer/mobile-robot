@@ -1,0 +1,9 @@
+<launch>
+	<node pkg="stopper" type="stopper_node" name="stopper_node" output="screen" launch-prefix="gnome-terminal --command" />
+	
+
+	<node pkg="people_follower" type="simple_follower" name="simple_follower" output="screen" launch-prefix="gnome-terminal --command" />
+	
+</launch>
+
+
