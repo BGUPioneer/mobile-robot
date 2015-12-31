@@ -58,7 +58,7 @@ class kinect2_pan_laser
          bool BigRight;
          bool SmallRight;
          bool WallRight;
-         bool laser_obstacle;
+         bool laser_obstacle_flag;
          double laser_angular_velocity=0;
 
 public:
@@ -93,10 +93,14 @@ void occlusionKinectCallback(const occlusions::sideOcclusions::ConstPtr& msg)
 
 void LaserObstaclesCallback(const obstacles::laserObstacles::ConstPtr& msg)
 {
-    laser_obstacle=msg->detect_obstacles;
+    laser_obstacle_flag=msg->detect_obstacles;
     laser_angular_velocity=msg->angular_velocity;
-    ROS_INFO("laser_obstacle: %d", laser_obstacle);
+    ROS_INFO("laser_obstacle_flag: %d", laser_obstacle_flag);
     ROS_INFO("laser_angular_velocity: %f", laser_angular_velocity);
+    if (laser_obstacle_flag){
+    cmd_vel.angular.z = laser_angular_velocity;  //turn to avoid obstacles
+    cmd_vel_pub.publish(cmd_vel);
+    }
 }
 
 void smallErrorCallback(const std_msgs::Float32::ConstPtr& msg)
@@ -126,7 +130,9 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        //Calculate distance error
        double DistanceErrorLaser=sqrt(pow(xLaserPerson,2)+pow(yLaserPerson,2));
 
+       if(!laser_obstacle_flag){
        cmd_vel.angular.z = AngleErrorLaser*KpAngle;
+       }
        double linearspeedLaser=(DistanceErrorLaser-DistanceTarget)*KpDistance;
 
        if (linearspeedLaser>MaxSpeed)
@@ -199,7 +205,11 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 //Set command Twist
           //      if(smallError==false ){  //to reduce vibration around 0 angle of the kinect view, and 0 robot angle  // && abs(AngleErrorPan)<0.05
           //    cmd_vel.angular.z = (AngleErrorPan+followingAngle)*KpAngle;
+                if (!laser_obstacle_flag){
                 cmd_vel.angular.z = -(AngleError+followingAngle)*KpAngle;
+                }
+         //       ROS_INFO("cmd_vel.angular.z: %f", cmd_vel.angular.z);
+
 
              //   cmd_vel.angular.z = AngleError*KpAngle;
             //    }

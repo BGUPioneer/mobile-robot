@@ -68,7 +68,7 @@ public:
     ImageConverter()
       : it_(n)
     {
-      image_sub = it_.subscribe("/kinect2_head/depth_rect/image", 10, &ImageConverter::imageCallback, this);
+      image_sub = it_.subscribe("/kinect2_head/rgb_rect/image", 10, &ImageConverter::imageCallback, this);
     //  image_sub = it_.subscribe("/kinect2_head/ir_rect_eq/image", 10, &ImageConverter::imageCallback, this);
       image_pub = it_.advertise("/image_converter/output_video", 1);
 
@@ -120,13 +120,24 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     cv_bridge::CvImagePtr cv_ptr;
     try
     {
-      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_16UC1);//now cv_ptr is the matrix
+ //     cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_16UC1);//now cv_ptr is the matrix
+      cv_ptr = cv_bridge::toCvCopy(msg);//now cv_ptr is the matrix
+
     }
     catch (cv_bridge::Exception& e)
     {
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
+
+          cv::cvtColor(cv_ptr->image, cv_ptr->image, CV_BGR2GRAY);   //convert to gray
+
+    // Update GUI Window
+          cv::imshow(OPENCV_WINDOW, cv_ptr->image);
+          cv::waitKey(3);
+
+          // Output modified video stream
+          image_pub.publish(cv_ptr->toImageMsg());
 
     xc=(xmin+xmax)/2;
     yc=ymin+(ymax-ymin)/3; //the 1/3 upper body
@@ -228,6 +239,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     bool_msg.wallRight=RightWall;
 
     side.publish(bool_msg);
+
     }
 };
 
