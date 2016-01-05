@@ -34,6 +34,8 @@ double ConfidenceTheshold=0.6; //1.1
 double HeightTheshold=1.4;
 
 namespace enc = sensor_msgs::image_encodings;
+using namespace cv;
+using namespace std;
 
 static const std::string OPENCV_WINDOW = "Image window";
 
@@ -63,13 +65,15 @@ class ImageConverter
     double height;
     double xc;
     double yc;
-    float depth;
-    double depthTheshold=800.0;
+    double valueTheshold=1000.0;
     bool validTrack;
     int nbOfTracks;
-    float temp;
+    float temp1;
+    float temp2;
     float value;
     cv::Mat roi;
+    bool LeftWall= false;
+    bool RightWall= false;
 
 public:
     ImageConverter()
@@ -111,10 +115,10 @@ void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){
 //    ROS_INFO("ymin: %f", ymin);
 //    ROS_INFO("xmax: %f", xmax);
 //    ROS_INFO("ymax: %f", ymax);
-  ROS_INFO("rgbxmin: %f", rgbxmin);
-  ROS_INFO("rgbymin: %f", rgbymin);
-  ROS_INFO("rgbxmax: %f", rgbxmax);
-  ROS_INFO("rgbymax: %f", rgbymax);
+//  ROS_INFO("rgbxmin: %f", rgbxmin);
+//  ROS_INFO("rgbymin: %f", rgbymin);
+//  ROS_INFO("rgbxmax: %f", rgbxmax);
+//  ROS_INFO("rgbymax: %f", rgbymax);
 //    ROS_INFO("Confidence: %f", confidence);
 //    ROS_INFO("Height: %f", height);
 //    ROS_INFO("age: %f", age);
@@ -133,7 +137,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     cv_bridge::CvImagePtr cv_ptr;
     try
     {
- //     cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_16UC1);//now cv_ptr is the matrix
         cv_ptr = cv_bridge::toCvCopy(msg);//now cv_ptr is the matrix
 
     }
@@ -143,154 +146,80 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         return;
     }
 
- //   cv::cvtColor(cv_ptr->image, cv_ptr->image, CV_BGR2GRAY);   //convert to gray
-
-/*    rgbxmin=xmin*3.5;
-    rgbymin=ymin;
-    rgbxmax=xmax*4;
-    rgbymax=ymax*2;
-*/
     xcenter=(xmin+xmax)/2;
- //   rgbxmin=round((270-xcenter)/10)*round(distance/2)+xmin*2;   //for rgb_lowers
- //   rgbxmax=-round((270-xcenter)/10)*round(distance/2)+xmax*2;
- if (xcenter<270){   rgbxmin=round((270-xcenter)/2)+xmin*4; }
- else {rgbxmin=-round((xcenter-270)/2)+xmin*4; }
+
+ if(xcenter<270){rgbxmin=round(270-xcenter)+xmin*4;}
+ else {rgbxmin=-round(xcenter-270)+xmin*4;}
     rgbxmax=rgbxmin+(xmax-xmin)*2;
-    ROS_INFO("xcenter: %f", xcenter);
-
-
     rgbymin=ymin*2;
-    rgbymax=ymax*2;
+    rgbymax=rgbymin+(ymax-ymin)*3;
 
+    xc=(rgbxmin+rgbxmax)/2;
+    yc=ymin+(rgbymax-rgbymin)/3; //the 1/3 upper body
 
+    //int marginAdd= round(10/distance);  //add margin depend on distance
+    int marginAdd=0;
+    LeftWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+    RightWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+    int smallOcclusions= round((xc-rgbxmin)/3);  //detect small occlusion
+    int bigOcclusions= round((xc-rgbxmin)/2);    //detect big occlusion
 
+    //      cv::GaussianBlur(cv_ptr->image, cv_ptr->image, cv::Size(5,5), 0);
+          cv::Canny(cv_ptr->image, cv_ptr->image, 50.0, 300.0, 3, false);
+          cv::Mat element1= cv::getStructuringElement(cv::MORPH_RECT, cv::Size(9,9), cv::Point(-1,-1));
+          cv::Mat element2= cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5,5), cv::Point(-1,-1));
+          cv::dilate(cv_ptr->image, cv_ptr->image, element1);
+          cv::erode(cv_ptr->image, cv_ptr->image, element2);
 
-/*    roi=cv::Mat2d(rgbxmax-rgbxmin,rgbymax-rgbymin);
-    short int tx=rgbxmin;
-    short int ty=rgbymin;
-    for (int i=0;i<rgbxmax-rgbxmin-1;i++){
-        for (int j=0;j<rgbymax-rgbymin-1;j++){
-            roi.at<int>(i,j)=cv_ptr->image.at<short int>(cv::Point(tx,ty));
-            tx++;
-            ty++;
-        }
-    }
-*/
-    // Draw a rectangle around the detected person:
-          rectangle(cv_ptr->image,cv::Point(rgbxmin,rgbymin),cv::Point(rgbxmax,rgbymax),cv::Scalar(255,255,255));
-   //       rectangle(cv_ptr->image,cv::Point(xmin*2,ymin),cv::Point(xmax*2,ymax),cv::Scalar(255,255,255));
+          cv::Mat temp=cv_ptr->image;
+          cv::cvtColor(temp, temp, cv::COLOR_GRAY2BGR);
+
+              cv::vector<Vec4i> lines;
+        //      HoughLinesP(cv_ptr->image, lines, 1, CV_PI / 180, 50, 50, 10);
+              HoughLinesP(cv_ptr->image, lines, 1, CV_PI / 180, 50, (rgbymax-rgbymin)/3, 0 );
+
+              for (size_t i = 0; i < lines.size(); i++)
+              {
+                  cv::Vec4i l = lines[i];
+                  if (abs(l[0]-l[2])<80) {    //for only vertical lines
+                      line(temp, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 0, 255), 3, 4);
+                      //left
+                      if (((l[0]>rgbxmin-marginAdd) && (l[0]<xc-5)) || ((l[2]>rgbxmin-marginAdd) && (l[2]<xc-5))){
+                          LeftWall=true;
+                      }
+                      //right
+                      if (((l[0]>xc+5) && (l[0]<rgbxmax+marginAdd)) || ((l[2]>xc+5) && (l[2]<rgbxmax+marginAdd))){
+                          RightWall=true;
+                      }
+                  }
+                  else {lines.pop_back();}
+              }
+
+      // Draw a rectangle around the detected person:
+            rectangle(cv_ptr->image,cv::Point(rgbxmin,rgbymin),cv::Point(rgbxmax,rgbymax),cv::Scalar(255,255,255));
+     //       rectangle(cv_ptr->image,cv::Point(xmin*2,ymin),cv::Point(xmax*2,ymax),cv::Scalar(255,255,255));
+            rectangle(temp,cv::Point(rgbxmin,rgbymin),cv::Point(rgbxmax,rgbymax),cv::Scalar(255,255,255));
 
 
     // Update GUI Window
-          cv::imshow(OPENCV_WINDOW, cv_ptr->image);
+          cv::imshow(OPENCV_WINDOW, temp);
           cv::waitKey(3);
 
           // Output modified video stream
           image_pub.publish(cv_ptr->toImageMsg());
 
-
-    xc=(rgbxmin+rgbxmax)/2;
-    yc=ymin+(rgbymax-rgbymin)/3; //the 1/3 upper body
-    value = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
-
-
-    ROS_INFO("value: %f", value);
-  //  ROS_INFO("depth2 %f", depth2);
-
-//left and right detections
-    int downCut= round((ymax-ymin)/8);  //to cut the lower part of the person for reduce floor alarm
-    int smallOcclusions= round(((xc-xmin)/3)*(ymax-ymin)*7/8);  //detect small occlusion
-    int bigOcclusions= round(((xc-xmin)/2)*(ymax-ymin)*7/8);    //detect big occlusion
-    int marginAdd= round(10/distance);  //add margin depend on distance
-
-    // size of a pixel depend on depth
-   // x = (X - 3.3931e+02) * z / 5.9421e+02
-   // y = (Y - 2.4274e+02) * z / 5.9421e+02
-
-    int countLeft= 0;
-    int countRight= 0;
-
-    bool smallLeftOcclusions= false; //detect occlusion from the left (point of view of the robot)
-    bool bigLeftOcclusions= false; //detect occlusion from the left (point of view of the robot)
-    bool LeftWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
-    int countLeftWall= 0;
-
-    bool smallRightOcclusions= false; //detect occlusion from the left (point of view of the robot)
-    bool bigRightOcclusions= false; //detect occlusion from the left (point of view of the robot)
-    bool RightWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
-    int countRightWall= 0;
-
-    if ((age>AgeThreshold) && (confidence>ConfidenceTheshold) && (height>HeightTheshold)){
-
-   //left
-        for (short int i=xmin-marginAdd;i<xc-5;i++){
-            countLeftWall= 0;
-            for (short int j=ymin;j<ymax-downCut;j++){
-        temp=cv_ptr->image.at<short int>(cv::Point(i,j));
-                if (temp<(depth-depthTheshold)){
-                   countLeft++;
-                   countLeftWall++;
-                   if (countLeftWall==ymax-downCut-ymin){LeftWall=true;}
-               }
-        }
-    }
-
-   //right
-        for (short int i=xc+5;i<xmax+marginAdd;i++){
-            countRightWall= 0;
-            for (short int j=ymin;j<ymax-downCut;j++){
-        temp=cv_ptr->image.at<short int>(cv::Point(i,j));
-                if (temp<(depth-depthTheshold)){
-                   countRight++;
-                   countRightWall++;
-                   if (countRightWall==ymax-downCut-ymin){RightWall=true;}
-               }
-        }
-    }
-
- //       ROS_INFO("LeftWall: %d", LeftWall);
- //       ROS_INFO("depth-depthTheshold: %f", depth-depthTheshold);
-
-
-        if (countLeft>smallOcclusions&&countLeft<bigOcclusions){
-            smallLeftOcclusions=true;
-  //          ROS_INFO("LeftOcclusions: small %d", countLeft);
-        }
-        else  if (countLeft>bigOcclusions){
-            bigLeftOcclusions=true;
- //           ROS_INFO("LeftOcclusions: big %d", countLeft);
-        }
-        else {
-  //          ROS_INFO("LeftOcclusions: false %d", countLeft);
- //       ROS_INFO("depth: %f", depth);
-        }
-
-  //      ROS_INFO("RightWall: %d", RightWall);
-  //      ROS_INFO("LeftWall: %d", LeftWall);
-
-        if (countRight>smallOcclusions&&countRight<bigOcclusions){
-            smallRightOcclusions=true;
-  //          ROS_INFO("RightOcclusions: small %d", countRight);
-        }
-        else  if (countRight>bigOcclusions){
-            bigRightOcclusions=true;
-  //          ROS_INFO("RightOcclusions: big %d", countRight);
-        }
-        else {
-  //          ROS_INFO("RightOcclusions: false %d", countRight);
-  //      ROS_INFO("depth: %f", depth);
-        }
-}
+        ROS_INFO("LeftWall: %d", LeftWall);
+        ROS_INFO("RightWall: %d", RightWall);
 
   //publish the boolians variables
-    bool_msg.bigLeft=bigLeftOcclusions;
-    bool_msg.smallLeft=smallLeftOcclusions;
+  //  bool_msg.bigLeft=bigLeftOcclusions;
+  //  bool_msg.smallLeft=smallLeftOcclusions;
     bool_msg.wallLeft=LeftWall;
-    bool_msg.bigRight=bigRightOcclusions;
-    bool_msg.smallRight=smallRightOcclusions;
+  //  bool_msg.bigRight=bigRightOcclusions;
+  //  bool_msg.smallRight=smallRightOcclusions;
     bool_msg.wallRight=RightWall;
 
-    side.publish(bool_msg);
+    side.publish(bool_msg);   
 
     }
 };
