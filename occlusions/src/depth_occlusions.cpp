@@ -93,7 +93,7 @@ void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){
     ymin=msg->tracks[i].box_2D.y;
     xmax=xmin+msg->tracks[i].box_2D.width;
     ymax=ymin+msg->tracks[i].box_2D.height;
-    distance=msg->tracks[0].distance;
+    distance=msg->tracks[i].distance;
     confidence=msg->tracks[i].confidence;
     height=msg->tracks[i].height;
     age=msg->tracks[i].age;
@@ -127,6 +127,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
+
+    // Update GUI Window
+          cv::imshow(OPENCV_WINDOW, cv_ptr->image);
+          cv::waitKey(3);
+
+          // Output modified video stream
+          image_pub.publish(cv_ptr->toImageMsg());
 
     xc=(xmin+xmax)/2;
     yc=ymin+(ymax-ymin)/3; //the 1/3 upper body

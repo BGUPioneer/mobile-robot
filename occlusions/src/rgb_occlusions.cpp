@@ -51,6 +51,11 @@ class ImageConverter
     double ymin=0;
     double xmax=0;
     double ymax=0;
+    double xcenter;
+    double rgbxmin=0;
+    double rgbymin=0;
+    double rgbxmax=0;
+    double rgbymax=0;
     double personCentroid;
     double distance;
     double confidence;
@@ -63,13 +68,17 @@ class ImageConverter
     bool validTrack;
     int nbOfTracks;
     float temp;
+    float value;
+    cv::Mat roi;
 
 public:
     ImageConverter()
       : it_(n)
     {
-      image_sub = it_.subscribe("/kinect2_head/rgb_rect/image", 10, &ImageConverter::imageCallback, this);
-    //  image_sub = it_.subscribe("/kinect2_head/ir_rect_eq/image", 10, &ImageConverter::imageCallback, this);
+   //   image_sub = it_.subscribe("/kinect2_head/rgb_rect/image", 10, &ImageConverter::imageCallback, this);
+   //   image_sub = it_.subscribe("/kinect2_head/rgb_lowres/image", 10, &ImageConverter::imageCallback, this);
+      image_sub = it_.subscribe("/kinect2_head/mono_rect/image", 10, &ImageConverter::imageCallback, this);
+
       image_pub = it_.advertise("/image_converter/output_video", 1);
 
       cv::namedWindow(OPENCV_WINDOW);
@@ -89,24 +98,28 @@ void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){
          for(int i=0;i<nbOfTracks && !validTrack;i++){
              //oldest track which is older than the age threshold and above the confidence threshold
              if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
-    xmin=msg->tracks[i].box_2D.x;
+    xmin=msg->tracks[i].box_2D.x;  //the resolotion of rgb_rect is twice the resolotion of depth_rect
     ymin=msg->tracks[i].box_2D.y;
     xmax=xmin+msg->tracks[i].box_2D.width;
     ymax=ymin+msg->tracks[i].box_2D.height;
-    distance=msg->tracks[0].distance;
+    distance=msg->tracks[i].distance;
     confidence=msg->tracks[i].confidence;
     height=msg->tracks[i].height;
     age=msg->tracks[i].age;
 
- /*   ROS_INFO("xmin: %f", xmin);
-    ROS_INFO("ymin: %f", ymin);
-    ROS_INFO("xmax: %f", xmax);
-    ROS_INFO("ymax: %f", ymax);
-    ROS_INFO("Confidence: %f", confidence);
-    ROS_INFO("Height: %f", height);
-    ROS_INFO("age: %f", age);
-    ROS_INFO("distance: %f", distance);
-*/
+//    ROS_INFO("xmin: %f", xmin);
+//    ROS_INFO("ymin: %f", ymin);
+//    ROS_INFO("xmax: %f", xmax);
+//    ROS_INFO("ymax: %f", ymax);
+  ROS_INFO("rgbxmin: %f", rgbxmin);
+  ROS_INFO("rgbymin: %f", rgbymin);
+  ROS_INFO("rgbxmax: %f", rgbxmax);
+  ROS_INFO("rgbymax: %f", rgbymax);
+//    ROS_INFO("Confidence: %f", confidence);
+//    ROS_INFO("Height: %f", height);
+//    ROS_INFO("age: %f", age);
+//    ROS_INFO("distance: %f", distance);
+
 validTrack=true;
 
             }
@@ -121,16 +134,52 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     try
     {
  //     cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_16UC1);//now cv_ptr is the matrix
-      cv_ptr = cv_bridge::toCvCopy(msg);//now cv_ptr is the matrix
+        cv_ptr = cv_bridge::toCvCopy(msg);//now cv_ptr is the matrix
 
     }
     catch (cv_bridge::Exception& e)
     {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+        return;
     }
 
-          cv::cvtColor(cv_ptr->image, cv_ptr->image, CV_BGR2GRAY);   //convert to gray
+ //   cv::cvtColor(cv_ptr->image, cv_ptr->image, CV_BGR2GRAY);   //convert to gray
+
+/*    rgbxmin=xmin*3.5;
+    rgbymin=ymin;
+    rgbxmax=xmax*4;
+    rgbymax=ymax*2;
+*/
+    xcenter=(xmin+xmax)/2;
+ //   rgbxmin=round((270-xcenter)/10)*round(distance/2)+xmin*2;   //for rgb_lowers
+ //   rgbxmax=-round((270-xcenter)/10)*round(distance/2)+xmax*2;
+ if (xcenter<270){   rgbxmin=round((270-xcenter)/2)+xmin*4; }
+ else {rgbxmin=-round((xcenter-270)/2)+xmin*4; }
+    rgbxmax=rgbxmin+(xmax-xmin)*2;
+    ROS_INFO("xcenter: %f", xcenter);
+
+
+    rgbymin=ymin*2;
+    rgbymax=ymax*2;
+
+
+
+
+/*    roi=cv::Mat2d(rgbxmax-rgbxmin,rgbymax-rgbymin);
+    short int tx=rgbxmin;
+    short int ty=rgbymin;
+    for (int i=0;i<rgbxmax-rgbxmin-1;i++){
+        for (int j=0;j<rgbymax-rgbymin-1;j++){
+            roi.at<int>(i,j)=cv_ptr->image.at<short int>(cv::Point(tx,ty));
+            tx++;
+            ty++;
+        }
+    }
+*/
+    // Draw a rectangle around the detected person:
+          rectangle(cv_ptr->image,cv::Point(rgbxmin,rgbymin),cv::Point(rgbxmax,rgbymax),cv::Scalar(255,255,255));
+   //       rectangle(cv_ptr->image,cv::Point(xmin*2,ymin),cv::Point(xmax*2,ymax),cv::Scalar(255,255,255));
+
 
     // Update GUI Window
           cv::imshow(OPENCV_WINDOW, cv_ptr->image);
@@ -139,12 +188,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
           // Output modified video stream
           image_pub.publish(cv_ptr->toImageMsg());
 
-    xc=(xmin+xmax)/2;
-    yc=ymin+(ymax-ymin)/3; //the 1/3 upper body
-    depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
 
-    ROS_INFO("depth: %f", depth);
-  //  ROS_INFO("depth1: %f", depth1);
+    xc=(rgbxmin+rgbxmax)/2;
+    yc=ymin+(rgbymax-rgbymin)/3; //the 1/3 upper body
+    value = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
+
+
+    ROS_INFO("value: %f", value);
   //  ROS_INFO("depth2 %f", depth2);
 
 //left and right detections
@@ -198,35 +248,37 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         }
     }
 
-        ROS_INFO("LeftWall: %d", LeftWall);
-        ROS_INFO("depth-depthTheshold: %f", depth-depthTheshold);
+ //       ROS_INFO("LeftWall: %d", LeftWall);
+ //       ROS_INFO("depth-depthTheshold: %f", depth-depthTheshold);
 
 
         if (countLeft>smallOcclusions&&countLeft<bigOcclusions){
             smallLeftOcclusions=true;
-            ROS_INFO("LeftOcclusions: small %d", countLeft);
+  //          ROS_INFO("LeftOcclusions: small %d", countLeft);
         }
         else  if (countLeft>bigOcclusions){
             bigLeftOcclusions=true;
-            ROS_INFO("LeftOcclusions: big %d", countLeft);
+ //           ROS_INFO("LeftOcclusions: big %d", countLeft);
         }
-        else {ROS_INFO("LeftOcclusions: false %d", countLeft);
-        ROS_INFO("depth: %f", depth);
+        else {
+  //          ROS_INFO("LeftOcclusions: false %d", countLeft);
+ //       ROS_INFO("depth: %f", depth);
         }
 
-        ROS_INFO("RightWall: %d", RightWall);
-        ROS_INFO("LeftWall: %d", LeftWall);
+  //      ROS_INFO("RightWall: %d", RightWall);
+  //      ROS_INFO("LeftWall: %d", LeftWall);
 
         if (countRight>smallOcclusions&&countRight<bigOcclusions){
             smallRightOcclusions=true;
-            ROS_INFO("RightOcclusions: small %d", countRight);
+  //          ROS_INFO("RightOcclusions: small %d", countRight);
         }
         else  if (countRight>bigOcclusions){
             bigRightOcclusions=true;
-            ROS_INFO("RightOcclusions: big %d", countRight);
+  //          ROS_INFO("RightOcclusions: big %d", countRight);
         }
-        else {ROS_INFO("RightOcclusions: false %d", countRight);
-        ROS_INFO("depth: %f", depth);
+        else {
+  //          ROS_INFO("RightOcclusions: false %d", countRight);
+  //      ROS_INFO("depth: %f", depth);
         }
 }
 

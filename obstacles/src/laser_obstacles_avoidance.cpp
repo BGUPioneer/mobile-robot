@@ -15,6 +15,7 @@
 #include "pcl_ros/transforms.h"
 #include "std_srvs/Empty.h"
 #include <obstacles/laserObstacles.h>
+#include <people_msgs/PositionMeasurementArray.h>
 
 //geometry_msgs::Twist zero_twist;
 obstacles::laserObstacles ob_msg;
@@ -26,14 +27,29 @@ class LaserObstacles
 
     ros::Subscriber cmdVel = n.subscribe("/cmd_vel", 10, &LaserObstacles::velocityCallback, this);
     ros::Subscriber sub_laser = n.subscribe("/RosAria/S3Series_1_pointcloud", 10, &LaserObstacles::LaserCallback,this);
+    ros::Subscriber sub_people= n.subscribe("/people_tracker_measurements", 10, &LaserObstacles::LaserLegsCallback, this);
+
     ros::Publisher pub=(n.advertise<obstacles::laserObstacles> ("/obstacles/laserObstacles",10));
 
-    double DistanceCheck=1.5;  //in front of the robot
+    double DistanceCheck=2.0;  //in front of the robot
     double WidthCheck= 0.4;  //for each side
     double angularVelocity;
     double linearVelocity;
+    double xLaserPerson;
+    double yLaserPerson;
+    double radiusPerson;
 
 
+void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
+{
+    int nbOfTracksLaser=msg->people.size();
+
+    if (nbOfTracksLaser>0) {
+        //Extract coordinates of first detected person
+        xLaserPerson=msg->people[0].pos.x;
+        yLaserPerson=msg->people[0].pos.y;
+        }
+}
 
 void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
 {
@@ -49,7 +65,7 @@ void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
 
   for (int i=0; i<pc_out.points.size() ;i++)
   {
-      if (pc_out.points[i].x < DistanceCheck && pc_out.points[i].x >0)
+      if ((pc_out.points[i].x < DistanceCheck) && (pc_out.points[i].x >0)  && (sqrt(pow(pc_out.points[i].x-xLaserPerson,2)+pow(pc_out.points[i].y-yLaserPerson,2))>0.7))
       {
           //2 conditions: 1. y smaller than positive WidthCheck multipile the power of the turn of the robot; 2.y bigger than negative WidthCheck multipile the power of the turn of the robot;
           if ((pc_out.points[i].y < WidthCheck*(1+angularVelocity)) && (pc_out.points[i].y > -WidthCheck*(1-angularVelocity))){

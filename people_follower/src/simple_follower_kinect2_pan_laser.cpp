@@ -83,10 +83,10 @@ void occlusionKinectCallback(const occlusions::sideOcclusions::ConstPtr& msg)
    SmallRight= msg->smallRight;
    WallRight= msg->wallRight;
 
-   if (BigLeft){followingAngle=0.5236;}
-   if (SmallLeft){followingAngle=0.2618;}
-   if (BigRight){followingAngle=-0.5236;}
-   if (SmallRight){followingAngle=-0.2618;}
+   if (BigLeft){followingAngle=-0.5236;}
+   if (SmallLeft){followingAngle=-0.2618;}
+   if (BigRight){followingAngle=0.5236;}
+   if (SmallRight){followingAngle=0.2618;}
 
    //followingAngle //15 deg= 0.2618 ,30 deg= 0.5236 rad, 60 deg= 1.0472 rad
 }
@@ -99,6 +99,7 @@ void LaserObstaclesCallback(const obstacles::laserObstacles::ConstPtr& msg)
     ROS_INFO("laser_angular_velocity: %f", laser_angular_velocity);
     if (laser_obstacle_flag){
     cmd_vel.angular.z = laser_angular_velocity;  //turn to avoid obstacles
+    cmd_vel.linear.x = 0.2;
     cmd_vel_pub.publish(cmd_vel);
     }
 }
