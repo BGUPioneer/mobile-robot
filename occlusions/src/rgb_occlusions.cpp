@@ -23,8 +23,6 @@
 
 #define PI 3.14159265
 
-cv::Scalar red(0,255,0);
-
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
 occlusions::sideOcclusions bool_msg;
@@ -46,32 +44,29 @@ class ImageConverter
     image_transport::Subscriber image_sub;
     image_transport::Publisher image_pub;
 
-    ros::Subscriber person_sub = n.subscribe("/tracker/tracks", 10, &ImageConverter::boxCallback, this);
+    ros::Subscriber person_sub = n.subscribe("/tracker/tracks", 10, &ImageConverter::boxCallback, this);  //info about people tracking
     ros::Publisher side= (n.advertise<occlusions::sideOcclusions>("occlusions/sideOcclusions",10));
 
-    double xmin=0;
+    double xmin=0;  //from depth image, using the subscriber of people tracking
     double ymin=0;
     double xmax=0;
     double ymax=0;
     double xcenter;
-    double rgbxmin=0;
-    double rgbymin=0;
-    double rgbxmax=0;
-    double rgbymax=0;
     double personCentroid;
     double distance;
     double confidence;
     double age;
     double height;
+
+    double rgbxmin=0;  //for rgb image
+    double rgbymin=0;
+    double rgbxmax=0;
+    double rgbymax=0;
     double xc;
     double yc;
-    double valueTheshold=1000.0;
+
     bool validTrack;
     int nbOfTracks;
-    float temp1;
-    float temp2;
-    float value;
-    cv::Mat roi;
     bool LeftWall= false;
     bool RightWall= false;
 
@@ -81,7 +76,7 @@ public:
     {
    //   image_sub = it_.subscribe("/kinect2_head/rgb_rect/image", 10, &ImageConverter::imageCallback, this);
    //   image_sub = it_.subscribe("/kinect2_head/rgb_lowres/image", 10, &ImageConverter::imageCallback, this);
-      image_sub = it_.subscribe("/kinect2_head/mono_rect/image", 10, &ImageConverter::imageCallback, this);
+      image_sub = it_.subscribe("/kinect2_head/mono_rect/image", 10, &ImageConverter::imageCallback, this);  //get the mono_rect image (gray image)
 
       image_pub = it_.advertise("/image_converter/output_video", 1);
 
@@ -102,7 +97,7 @@ void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){
          for(int i=0;i<nbOfTracks && !validTrack;i++){
              //oldest track which is older than the age threshold and above the confidence threshold
              if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
-    xmin=msg->tracks[i].box_2D.x;  //the resolotion of rgb_rect is twice the resolotion of depth_rect
+    xmin=msg->tracks[i].box_2D.x;  //the resolotion of mono_rect is twice the resolotion of depth_rect
     ymin=msg->tracks[i].box_2D.y;
     xmax=xmin+msg->tracks[i].box_2D.width;
     ymax=ymin+msg->tracks[i].box_2D.height;
@@ -137,7 +132,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     cv_bridge::CvImagePtr cv_ptr;
     try
     {
-        cv_ptr = cv_bridge::toCvCopy(msg);//now cv_ptr is the matrix
+        cv_ptr = cv_bridge::toCvCopy(msg);//now cv_ptr is the matrix of the image
 
     }
     catch (cv_bridge::Exception& e)
@@ -146,37 +141,34 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         return;
     }
 
-    xcenter=(xmin+xmax)/2;
+    xcenter=(xmin+xmax)/2;  //the center of the box in x axis at the DEPTH image
 
- if(xcenter<270){rgbxmin=round(270-xcenter)+xmin*4;}
- else {rgbxmin=-round(xcenter-270)+xmin*4;}
+ if(xcenter<270){rgbxmin=round(270-xcenter)+xmin*4;}  //the person is at the left side of the image
+ else {rgbxmin=-round(xcenter-270)+xmin*4;}  //the person is at the right side of the image
     rgbxmax=rgbxmin+(xmax-xmin)*2;
     rgbymin=ymin*2;
-    rgbymax=rgbymin+(ymax-ymin)*3;
+    rgbymax=rgbymin+(ymax-ymin)*3; //to add more for the legs but not the ground
 
-    xc=(rgbxmin+rgbxmax)/2;
+    xc=(rgbxmin+rgbxmax)/2;  //the center of the box in x axis at the RGB image
     yc=ymin+(rgbymax-rgbymin)/3; //the 1/3 upper body
 
-    //int marginAdd= round(10/distance);  //add margin depend on distance
-    int marginAdd=0;
-    LeftWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
-    RightWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+    int marginAdd= round(10/distance);  //add margin depend on distance
+    LeftWall= false; //detect a "tall" vertical occlusion from the left (point of view of the robot)
+    RightWall= false; //detect a "tall" vertical occlusion from the left (point of view of the robot)
     int smallOcclusions= round((xc-rgbxmin)/3);  //detect small occlusion
     int bigOcclusions= round((xc-rgbxmin)/2);    //detect big occlusion
 
-    //      cv::GaussianBlur(cv_ptr->image, cv_ptr->image, cv::Size(5,5), 0);
-          cv::Canny(cv_ptr->image, cv_ptr->image, 50.0, 300.0, 3, false);
-          cv::Mat element1= cv::getStructuringElement(cv::MORPH_RECT, cv::Size(9,9), cv::Point(-1,-1));
-          cv::Mat element2= cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5,5), cv::Point(-1,-1));
-          cv::dilate(cv_ptr->image, cv_ptr->image, element1);
-          cv::erode(cv_ptr->image, cv_ptr->image, element2);
+          cv::Canny(cv_ptr->image, cv_ptr->image, 50.0, 300.0, 3, false);  //canny edge detector
+          cv::Mat element1= cv::getStructuringElement(cv::MORPH_RECT, cv::Size(9,9), cv::Point(-1,-1)); // 9*9 open element
+          cv::Mat element2= cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5,5), cv::Point(-1,-1)); // 5*5 close element
+          cv::dilate(cv_ptr->image, cv_ptr->image, element1);  //open the pixels
+          cv::erode(cv_ptr->image, cv_ptr->image, element2);  //close the pixels
 
           cv::Mat temp=cv_ptr->image;
           cv::cvtColor(temp, temp, cv::COLOR_GRAY2BGR);
 
               cv::vector<Vec4i> lines;
-        //      HoughLinesP(cv_ptr->image, lines, 1, CV_PI / 180, 50, 50, 10);
-              HoughLinesP(cv_ptr->image, lines, 1, CV_PI / 180, 50, (rgbymax-rgbymin)/3, 0 );
+              HoughLinesP(cv_ptr->image, lines, 1, CV_PI / 180, 50, (rgbymax-rgbymin)/3, 0 );  //find straight lines with Hough
 
               for (size_t i = 0; i < lines.size(); i++)
               {
@@ -197,9 +189,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
       // Draw a rectangle around the detected person:
             rectangle(cv_ptr->image,cv::Point(rgbxmin,rgbymin),cv::Point(rgbxmax,rgbymax),cv::Scalar(255,255,255));
-     //       rectangle(cv_ptr->image,cv::Point(xmin*2,ymin),cv::Point(xmax*2,ymax),cv::Scalar(255,255,255));
             rectangle(temp,cv::Point(rgbxmin,rgbymin),cv::Point(rgbxmax,rgbymax),cv::Scalar(255,255,255));
-
 
     // Update GUI Window
           cv::imshow(OPENCV_WINDOW, temp);

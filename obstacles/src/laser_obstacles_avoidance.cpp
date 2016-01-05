@@ -26,8 +26,8 @@ class LaserObstacles
     tf::TransformListener tf_listener;
 
     ros::Subscriber cmdVel = n.subscribe("/cmd_vel", 10, &LaserObstacles::velocityCallback, this);
-    ros::Subscriber sub_laser = n.subscribe("/RosAria/S3Series_1_pointcloud", 10, &LaserObstacles::LaserCallback,this);
-    ros::Subscriber sub_people= n.subscribe("/people_tracker_measurements", 10, &LaserObstacles::LaserLegsCallback, this);
+    ros::Subscriber sub_laser = n.subscribe("/RosAria/S3Series_1_pointcloud", 10, &LaserObstacles::LaserCallback,this);  //get the laser point
+    ros::Subscriber sub_people= n.subscribe("/people_tracker_measurements", 10, &LaserObstacles::LaserLegsCallback, this);  //get the leg detector point of the person
 
     ros::Publisher pub=(n.advertise<obstacles::laserObstacles> ("/obstacles/laserObstacles",10));
 
@@ -37,7 +37,7 @@ class LaserObstacles
     double linearVelocity;
     double xLaserPerson;
     double yLaserPerson;
-    double radiusPerson;
+    double radiusPerson=0.7;
 
 
 void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
@@ -65,7 +65,8 @@ void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
 
   for (int i=0; i<pc_out.points.size() ;i++)
   {
-      if ((pc_out.points[i].x < DistanceCheck) && (pc_out.points[i].x >0)  && (sqrt(pow(pc_out.points[i].x-xLaserPerson,2)+pow(pc_out.points[i].y-yLaserPerson,2))>0.7))
+      //an obstacle inside the DistanceCheck and more than radiusPerson from a detected legs
+      if ((pc_out.points[i].x < DistanceCheck) && (pc_out.points[i].x >0)  && (sqrt(pow(pc_out.points[i].x-xLaserPerson,2)+pow(pc_out.points[i].y-yLaserPerson,2))>radiusPerson))
       {
           //2 conditions: 1. y smaller than positive WidthCheck multipile the power of the turn of the robot; 2.y bigger than negative WidthCheck multipile the power of the turn of the robot;
           if ((pc_out.points[i].y < WidthCheck*(1+angularVelocity)) && (pc_out.points[i].y > -WidthCheck*(1-angularVelocity))){
@@ -85,11 +86,11 @@ void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
   }
   //if obstacle from the left than turn right (positive angular velocity)
   if (YclosestObstacle>=0){
-  angularCommand=WidthCheck-YclosestObstacle;
+  angularCommand=(WidthCheck-YclosestObstacle)/10;
   }
   //if obstacle from the right than turn left (negative angular velocity)
   else {
-      angularCommand=-(WidthCheck+YclosestObstacle);
+      angularCommand=-(WidthCheck+YclosestObstacle)/10;
   }
   //publish the variables
     ob_msg.detect_obstacles=obstacle;
