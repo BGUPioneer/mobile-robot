@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "ros/ros.h"
 #include "math.h"
 #include "std_msgs/String.h"
@@ -59,7 +58,11 @@ class ImageConverter
     double xc;
     double yc;
     float depth;
-    double depthTheshold=800.0;
+    float personDepth;
+
+ //   double depthTheshold=800.0;
+    double depthTheshold=3.0;
+
     bool validTrack;
     int nbOfTracks;
     float temp;
@@ -98,15 +101,15 @@ void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){
     height=msg->tracks[i].height;
     age=msg->tracks[i].age;
 
- /*   ROS_INFO("xmin: %f", xmin);
-    ROS_INFO("ymin: %f", ymin);
-    ROS_INFO("xmax: %f", xmax);
-    ROS_INFO("ymax: %f", ymax);
-    ROS_INFO("Confidence: %f", confidence);
-    ROS_INFO("Height: %f", height);
-    ROS_INFO("age: %f", age);
-    ROS_INFO("distance: %f", distance);
-*/
+//    ROS_INFO("xmin: %f", xmin);
+//    ROS_INFO("ymin: %f", ymin);
+//    ROS_INFO("xmax: %f", xmax);
+//    ROS_INFO("ymax: %f", ymax);
+//    ROS_INFO("Confidence: %f", confidence);
+//    ROS_INFO("Height: %f", height);
+//    ROS_INFO("age: %f", age);
+//    ROS_INFO("distance: %f", distance);
+
 validTrack=true;
 
             }
@@ -129,17 +132,20 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     }
 
     // Update GUI Window
-          cv::imshow(OPENCV_WINDOW, cv_ptr->image);
-          cv::waitKey(3);
+    //      cv::imshow(OPENCV_WINDOW, cv_ptr->image);
+    //      cv::waitKey(3);
 
           // Output modified video stream
           image_pub.publish(cv_ptr->toImageMsg());
 
     xc=(xmin+xmax)/2;
     yc=ymin+(ymax-ymin)/3; //the 1/3 upper body
-    depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
+//    depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
+    personDepth=distance*1000;  //to avoid an error from calculate the depth only from one pixel, it's better to calculate from the all distance from the person and multipile by 1000 to get milimeters
+    depth=personDepth*255/pow(2,16);  //to normalize to 255
 
-    ROS_INFO("depth: %f", depth);
+
+    ROS_INFO("personDepth: %f", personDepth);
   //  ROS_INFO("depth1: %f", depth1);
   //  ROS_INFO("depth2 %f", depth2);
 
@@ -173,6 +179,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
             countLeftWall= 0;
             for (short int j=ymin;j<ymax-downCut;j++){
         temp=cv_ptr->image.at<short int>(cv::Point(i,j));
+        temp=temp*255/pow(2,16);  //to normalize to 255
+
                 if (temp<(depth-depthTheshold)){
                    countLeft++;
                    countLeftWall++;
@@ -186,6 +194,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
             countRightWall= 0;
             for (short int j=ymin;j<ymax-downCut;j++){
         temp=cv_ptr->image.at<short int>(cv::Point(i,j));
+        temp=temp*255/pow(2,16);  //to normalize to 255
                 if (temp<(depth-depthTheshold)){
                    countRight++;
                    countRightWall++;
@@ -194,8 +203,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         }
     }
 
-        ROS_INFO("LeftWall: %d", LeftWall);
-        ROS_INFO("depth-depthTheshold: %f", depth-depthTheshold);
+  //      ROS_INFO("LeftWall: %d", LeftWall);
+  //      ROS_INFO("depth-depthTheshold: %f", depth-depthTheshold);
 
 
         if (countLeft>smallOcclusions&&countLeft<bigOcclusions){
@@ -207,7 +216,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
             ROS_INFO("LeftOcclusions: big %d", countLeft);
         }
         else {ROS_INFO("LeftOcclusions: false %d", countLeft);
-        ROS_INFO("depth: %f", depth);
+  //      ROS_INFO("depth: %f", depth);
         }
 
         ROS_INFO("RightWall: %d", RightWall);
@@ -222,7 +231,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
             ROS_INFO("RightOcclusions: big %d", countRight);
         }
         else {ROS_INFO("RightOcclusions: false %d", countRight);
-        ROS_INFO("depth: %f", depth);
+    //    ROS_INFO("depth: %f", depth);
         }
 }
 
@@ -245,7 +254,12 @@ int main(int argc, char **argv){
     ImageConverter ic;
     ros::NodeHandle n;
 
-	 ros::spin();
-	  return 0;
+     ros::spin();
+      return 0;
 }
+
+
+
+
+
 
