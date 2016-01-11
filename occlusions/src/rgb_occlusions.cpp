@@ -148,16 +148,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
     cv::Size size(960,540);  //size of the depth image
     cv::resize(deleteMargin,deleteMargin,size);  //resize the gray mono image to the depth image size
-/*
-       xcenter=(xmin+xmax)/2;  //the center of the box in x axis at the DEPTH image
-       rgbxmin=xmin*2+round(((270-xcenter)/2)-(distance*3));
-       rgbxmax=rgbxmin+(xmax-xmin)*1.3;
-       rgbymin=ymin;
-       rgbymax=rgbymin+(ymax-ymin)*1.3; //to add more for the legs but not the ground
- */
+
        xcenter=(xmin+xmax)/2;  //the center of the box in x axis at the DEPTH image
        rgbxmin=xmin*2+round(((270-xcenter)/3)-distance*2);
-       rgbxmax=rgbxmin+(xmax-xmin);
+       rgbxmax=rgbxmin+(xmax-xmin)*1.4;
        rgbymin=ymin;
        rgbymax=rgbymin+(ymax-ymin)*1.3; //to add more for the legs but not the ground
 
@@ -268,7 +262,7 @@ int main(int argc, char **argv){
 
 
 
-////////////////////////////////////////work
+////////////////////////////////////////work for the ALL image (0.5hz)
 /*
 #include <stdio.h>
 #include <stdlib.h>

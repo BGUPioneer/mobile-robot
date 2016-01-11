@@ -37,7 +37,7 @@ class kinect2_pan_laser
     ros::Subscriber sub4;
     ros::Subscriber sub5;
     ros::Subscriber sub6;
-    ros::Subscriber sub7;
+//    ros::Subscriber sub7;
     ros::Publisher cmd_vel_pub;
 
          double KpAngle=0.5;
@@ -79,12 +79,12 @@ public:
          sub4= n.subscribe("/people_tracker_measurements", 10, &kinect2_pan_laser::LaserLegsCallback, this);
          sub5= n.subscribe("/occlusions/sideOcclusions", 10, &kinect2_pan_laser::occlusionKinectCallback, this);
          sub6= n.subscribe("/obstacles/laserObstacles", 10, &kinect2_pan_laser::LaserObstaclesCallback, this);
-         sub7= n.subscribe("/tracker/history", 10, &kinect2_pan_laser::historyTrackCallback, this);
+ //        sub7= n.subscribe("/tracker/history", 10, &kinect2_pan_laser::historyTrackCallback, this);
          cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
       }
 
   //    void historyTrackCallback(const sensor_msgs::PointCloud2ConstPtr& msg){
-          void historyTrackCallback(const sensor_msgs::PointCloud::ConstPtr& msg){
+//          void historyTrackCallback(const sensor_msgs::PointCloud::ConstPtr& msg){
 
   //    void historyTrackCallback(const boost::shared_ptr<const sensor_msgs::PointCloud2>& input){
 /*          ROS_INFO ("Cloud: width = %d, height = %d\n", msg->width, msg->height);
@@ -98,7 +98,7 @@ public:
          pcl::fromPCLPointCloud2(test,*temp_cloud);
          ROS_INFO("temp_cloud: %f", );
 */
-         }
+ //        }
 
 
 void occlusionKinectCallback(const occlusions::sideOcclusions::ConstPtr& msg)
