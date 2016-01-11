@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   opt_msgs
 )
+find_package(PCL REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -117,6 +118,9 @@ catkin_package(
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )
+include_directories(
+  ${PCL_INCLUDE_DIRS}
+)
 
 ## Declare a C++ library
 # add_library(people_follower
@@ -135,7 +139,7 @@ add_executable(simple_follower_kinect2_pan src/simple_follower_kinect2_pan.cpp)
 add_executable(simple_follower_kinect2_pan30 src/simple_follower_kinect2_pan30.cpp)
 add_executable(simple_follower_kinect2_pan60 src/simple_follower_kinect2_pan60.cpp)
 add_executable(simple_follower_kinect2_pan_laser src/simple_follower_kinect2_pan_laser.cpp)
-
+add_executable(path_follower src/path_follower.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -159,6 +163,12 @@ target_link_libraries(simple_follower_kinect2_pan60
  )
 target_link_libraries(simple_follower_kinect2_pan_laser
    ${catkin_LIBRARIES}
+ )
+target_link_libraries(path_follower
+   ${catkin_LIBRARIES}
+ )
+target_link_libraries(path_follower
+   ${PCL_LIBRARIES}
  )
 
 

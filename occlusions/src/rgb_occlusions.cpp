@@ -143,30 +143,46 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         return;
     }
 
-    cv::Size size(960,540);  //size of the depth image
-    cv::resize(cv_ptr->image,cv_ptr->image,size);  //resize the gray mono image to the depth image size
+    cv::Mat deleteMargin= cv::Mat::zeros(1080,1710,0);
+    deleteMargin = cv_ptr->image(Rect(104,0,1710,1080)).clone();  //take only the BBC with the person with margin depend on distance
 
+    cv::Size size(960,540);  //size of the depth image
+    cv::resize(deleteMargin,deleteMargin,size);  //resize the gray mono image to the depth image size
+/*
        xcenter=(xmin+xmax)/2;  //the center of the box in x axis at the DEPTH image
        rgbxmin=xmin*2+round(((270-xcenter)/2)-(distance*3));
        rgbxmax=rgbxmin+(xmax-xmin)*1.3;
+       rgbymin=ymin;
+       rgbymax=rgbymin+(ymax-ymin)*1.3; //to add more for the legs but not the ground
+ */
+       xcenter=(xmin+xmax)/2;  //the center of the box in x axis at the DEPTH image
+       rgbxmin=xmin*2+round(((270-xcenter)/3)-distance*2);
+       rgbxmax=rgbxmin+(xmax-xmin);
        rgbymin=ymin;
        rgbymax=rgbymin+(ymax-ymin)*1.3; //to add more for the legs but not the ground
 
 
     xc=(rgbxmin+rgbxmax)/2;  //the center of the box in x axis at the RGB image
     yc=ymin+(rgbymax-rgbymin)/3; //the 1/3 upper body
+    ROS_INFO("xcenter: %f", xcenter);
 
-    int marginAdd= round(10/distance);  //add margin depend on distance
+
+    int marginAdd= round(50/distance);  //add margin depend on distance
     LeftWall= false; //detect a "tall" vertical occlusion from the left (point of view of the robot)
     RightWall= false; //detect a "tall" vertical occlusion from the left (point of view of the robot)
     int smallOcclusions= round((xcBox-xmin*2+round(((270-xcenter)/2)-(distance*3)))/3);  //detect small occlusion
     int bigOcclusions= round((xcBox-xmin*2+round(((270-xcenter)/2)-(distance*3)))/2);    //detect big occlusion
 
-
     xcBox=((xmax-xmin)*1.3+marginAdd*2)/2;
     cv::Mat temp= cv::Mat::zeros(540,960,0);
- if(rgbxmin-marginAdd >= 0 && rgbymin >= 0 && rgbxmax+marginAdd < cv_ptr->image.cols && rgbymax < cv_ptr->image.rows && (xmax-xmin)*1.3+marginAdd>0 && (ymax-ymin)*1.3>0){
-    temp = cv_ptr->image(Rect(rgbxmin-marginAdd,rgbymin,(xmax-xmin)*1.3+marginAdd,(ymax-ymin)*1.3)).clone();  //take only the BBC with the person with margin depend on distance
+
+    int top = (int) (0.01*temp.rows);
+    int bottom = (int) (0.01*temp.rows);
+    int left = (int) (0.01*temp.cols);
+    int right = (int) (0.01*temp.cols);
+
+ if(rgbxmin-marginAdd*2 >= 0 && rgbymin >= 0 && rgbxmax+marginAdd < deleteMargin.cols && rgbymax < deleteMargin.rows && (xmax-xmin)*1.4+marginAdd>0 && (ymax-ymin)*1.3>0){
+    temp = deleteMargin(Rect(rgbxmin-marginAdd,rgbymin,(xmax-xmin)*1.4+marginAdd,(ymax-ymin)*1.3)).clone();  //take only the BBC with the person with margin depend on distance
     }
 
     cv::GaussianBlur(temp, temp, cv::Size(3,3), 0);
@@ -178,12 +194,14 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
     cv::Mat temp2=temp;
     cv::cvtColor(temp2, temp2, cv::COLOR_GRAY2BGR);
+    copyMakeBorder( temp2, temp2, top, bottom, left, right, BORDER_CONSTANT, cv::Scalar(255,255,255) );
+
 
         std::vector<std::vector<cv::Point> > contours;
         cv::findContours(temp,contours,CV_RETR_TREE,CV_CHAIN_APPROX_SIMPLE);
             for (int i=0; i<contours.size(); i++){
                 if(contours[i].size()>(rgbymax-rgbymin)*1.5){
-                cv::drawContours(temp2,contours,i,cv::Scalar(255,0,0),8,8);
+                cv::drawContours(temp2,contours,i,cv::Scalar(0,255,0),8,8);
                 }
                 else {contours.pop_back();}
             }
