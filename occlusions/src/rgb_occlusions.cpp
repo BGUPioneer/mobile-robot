@@ -113,12 +113,12 @@ validTrack=true;
 }
 
 
-void imageCallback(const sensor_msgs::ImageConstPtr& msg)
+void imageCallback(const sensor_msgs::ImageConstPtr& msg)             //working on the depth image
 {
     cv_bridge::CvImagePtr cv_ptr;
     try
     {
-        cv_ptr = cv_bridge::toCvCopy(msg);//now cv_ptr is the matrix of the image
+        cv_ptr = cv_bridge::toCvCopy(msg);                            //now cv_ptr is the matrix of the image
 
     }
     catch (cv_bridge::Exception& e)
@@ -128,33 +128,33 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     }
 
     cv::Mat deleteMargin= cv::Mat::zeros(1080,1710,0);
-    deleteMargin = cv_ptr->image(Rect(104,0,1710,1080)).clone();  //take only the BBC with the person with margin depend on distance
+    deleteMargin = cv_ptr->image(Rect(104,0,1710,1080)).clone();     //because there is a different FOV between depth and RGB i delete the 105 pixels from each side to reduce the FOV different
 
-    cv::Size size(960,540);  //size of the depth image   //the resolotion of mono_rect is twice the resolotion of depth_rect
-    cv::resize(deleteMargin,deleteMargin,size);  //resize the gray mono image to the depth image size
+    cv::Size size(960,540);                                          //size of the depth image
+    cv::resize(deleteMargin,deleteMargin,size);                      //resize the gray mono image to the depth image size because the resolotion of mono_rect is twice the resolotion of depth_rect
 
-       xcenter=(xmin+xmax)/2;  //the center of the box in x axis at the DEPTH image
-       rgbxmin=xmin*2+round(((270-xcenter)/3)-distance*2);
-       rgbxmax=rgbxmin+(xmax-xmin)*1.4;
-       rgbymin=ymin;
-       rgbymax=rgbymin+(ymax-ymin)*1.3; //to add more for the legs but not the ground
+       xcenter=(xmin+xmax)/2;                                        //the center of the box in x axis at the DEPTH image
+       rgbxmin=xmin*2+round(((270-xcenter)/3)-distance*2);           //top-left of the BBC from the MONO image with react to the center of the image because different FOV and with react to the distance
+       rgbxmax=rgbxmin+(xmax-xmin)*1.4;                              //top-right of the BBC from the MONO image with more width to cover the all person
+       rgbymin=ymin;                                                 //bottom-left of the BBC from the MONO image
+       rgbymax=rgbymin+(ymax-ymin)*1.3;                              //bottom-right of the BBC from the MONO image with more for the legs but not the ground
 
 
-    xc=(rgbxmin+rgbxmax)/2;  //the center of the box in x axis at the RGB image
-    yc=ymin+(rgbymax-rgbymin)/3; //the 1/3 upper body
+    xc=(rgbxmin+rgbxmax)/2;                                          //the center of the box in x axis at the MONO image
+    yc=ymin+(rgbymax-rgbymin)/3;                                     //the 1/3 upper body from the MONO umage
     ROS_INFO("xcenter: %f", xcenter);
 
 
-    int marginAdd= round(50/distance);  //add margin depend on distance
-    LeftWall= false; //detect a "tall" vertical occlusion from the left (point of view of the robot)
-    RightWall= false; //detect a "tall" vertical occlusion from the left (point of view of the robot)
-    int smallOcclusions= round((xcBox-xmin*2+round(((270-xcenter)/2)-(distance*3)))/3);  //detect small occlusion
-    int bigOcclusions= round((xcBox-xmin*2+round(((270-xcenter)/2)-(distance*3)))/2);    //detect big occlusion
+    int marginAdd= round(50/distance);                              //add margin depend on distance
+    LeftWall= false;                                                //detect a "tall" vertical occlusion from the left (point of view of the robot)- a wall
+    RightWall= false;                                               //detect a "tall" vertical occlusion from the left (point of view of the robot)- a wall
+ //   int smallOcclusions= round((xcBox-xmin*2+round(((270-xcenter)/2)-(distance*3)))/3);  //detect small occlusion
+ //   int bigOcclusions= round((xcBox-xmin*2+round(((270-xcenter)/2)-(distance*3)))/2);    //detect big occlusion
 
-    xcBox=((xmax-xmin)*1.4+marginAdd*2)/2;
-    cv::Mat temp= cv::Mat::zeros(540,960,0);
+    xcBox=((xmax-xmin)*1.4+marginAdd*2)/2;                          //the center of the box in the ROI
+    cv::Mat temp= cv::Mat::zeros(540,960,0);                        //temp mat with the maximum size of the MONO image
 
-    int top = (int) (0.01*temp.rows);
+    int top = (int) (0.01*temp.rows);                               //for add borders to the image
     int bottom = (int) (0.01*temp.rows);
     int left = (int) (0.01*temp.cols);
     int right = (int) (0.01*temp.cols);
@@ -163,49 +163,49 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     temp = deleteMargin(Rect(rgbxmin-marginAdd,rgbymin,(xmax-xmin)*1.4+marginAdd,(ymax-ymin)*1.3)).clone();  //take only the BBC with the person with margin depend on distance
     }
 
-    cv::GaussianBlur(temp, temp, cv::Size(3,3), 0);
-    cv::Canny(temp, temp, 50.0, 300.0, 3, false);  //canny edge detector
-    cv::Mat element1= cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5,5), cv::Point(-1,-1)); // 9*9 open element
-    cv::Mat element2= cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5,5), cv::Point(-1,-1)); // 5*5 close element
-    cv::dilate(temp, temp, element1);  //open the pixels
-    cv::erode(temp, temp, element2);  //close the pixels
+    cv::GaussianBlur(temp, temp, cv::Size(3,3), 0);                                                     //gaussian blur 3*3
+    cv::Canny(temp, temp, 50.0, 300.0, 3, false);                                                       //canny edge detector
+    cv::Mat element1= cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5,5), cv::Point(-1,-1));       // 5*5 open element
+    cv::Mat element2= cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5,5), cv::Point(-1,-1));       // 5*5 close element
+    cv::dilate(temp, temp, element1);                                                                   //open the pixels
+    cv::erode(temp, temp, element2);                                                                    //close the pixels
 
     cv::Mat temp2=temp;
-    cv::cvtColor(temp2, temp2, cv::COLOR_GRAY2BGR);
-    copyMakeBorder( temp2, temp2, top, bottom, left, right, BORDER_CONSTANT, cv::Scalar(255,255,255) );
+    cv::cvtColor(temp2, temp2, cv::COLOR_GRAY2BGR);                                                     //color mat for show
+    copyMakeBorder( temp2, temp2, top, bottom, left, right, BORDER_CONSTANT, cv::Scalar(255,255,255) ); //add white borders to help detect contours
 
 
-        std::vector<std::vector<cv::Point> > contours;
-        cv::findContours(temp,contours,CV_RETR_TREE,CV_CHAIN_APPROX_SIMPLE);
+        std::vector<std::vector<cv::Point> > contours;                                                  //vector of vector of points for contours
+        cv::findContours(temp,contours,CV_RETR_TREE,CV_CHAIN_APPROX_SIMPLE);                            //find contours
             for (int i=0; i<contours.size(); i++){
-                if(contours[i].size()>(rgbymax-rgbymin)*1.5){
-                cv::drawContours(temp2,contours,i,cv::Scalar(0,255,0),8,8);
+                if(contours[i].size()>(rgbymax-rgbymin)*1.5){                                           //only if the contour is bigger than the whole height of the ROI multipile 1.5
+                cv::drawContours(temp2,contours,i,cv::Scalar(0,255,0),8,8);                             //draw green contours
                 }
-                else {contours.pop_back();}
+                else {contours.pop_back();}                                                             //delete small contours from the vector "contours"
             }
 
-        cv::vector<Vec4i> lines;
-          HoughLinesP(temp, lines, 1, CV_PI / 180, 50, (rgbymax-rgbymin)*0.5, 0 );  //find straight lines with Hough
+        cv::vector<Vec4i> lines;                                                                       //vector "lines" contain 4 argument for xStart, yStart, xEnd, yEnd for a line
+          HoughLinesP(temp, lines, 1, CV_PI / 180, 50, (rgbymax-rgbymin)*0.5, 0 );                     //find straight lines with Hough that are bigger than the half height of the ROI
 
           for (size_t i = 0; i < lines.size(); i++)
           {
               cv::Vec4i l = lines[i];
-              if (abs(l[0]-l[2])<(rgbxmax-rgbxmin)/10) {    //for only vertical lines depend on the width of the person box divide by 10 (only 1/10 size of the width)
-                  line(temp2, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 0, 255), 10, 4);
+              if (abs(l[0]-l[2])<(rgbxmax-rgbxmin)/10) {                                               //for only vertical lines depend on the width of the person box divide by 10 (only 1/10 size of the width)
+                  line(temp2, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 0, 255), 10, 4);         //draw red line
                   //left
-                  if (((l[0]>0) && (l[0]<xcBox-5)) || ((l[2]>0) && (l[2]<xcBox-5))){
+                  if (((l[0]>0) && (l[0]<xcBox-5)) || ((l[2]>0) && (l[2]<xcBox-5))){                   //if the edges of the straight line is inside the ROI from the left to the center minus 5 it's a left wall
                       LeftWall=true;
                   }
                   //right
-                  if (((l[0]>xcBox+5) && (l[0]<temp.cols)) || ((l[2]>xcBox+5) && (l[2]<temp.cols))){
+                  if (((l[0]>xcBox+5) && (l[0]<temp.cols)) || ((l[2]>xcBox+5) && (l[2]<temp.cols))){   //if the edges of the straight line is inside the ROI from the center plus 5 to the right it's a right wall
                       RightWall=true;
                   }
               }
-              else {lines.pop_back();}
+              else {lines.pop_back();}                                                                 //delete all the other lines from the vector "lines"
           }
 
       // Draw a rectangle around the detected person:
-            rectangle(temp,cv::Point(rgbxmin,rgbymin),cv::Point(rgbxmax,rgbymax),cv::Scalar(0,255,0), 10);
+      //      rectangle(temp,cv::Point(rgbxmin,rgbymin),cv::Point(rgbxmax,rgbymax),cv::Scalar(0,255,0), 10);
             rectangle(temp2,cv::Point(rgbxmin,rgbymin),cv::Point(rgbxmax,rgbymax),cv::Scalar(0,255,0), 10);
 
     // Update GUI Window
