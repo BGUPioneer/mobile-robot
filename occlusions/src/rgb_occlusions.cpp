@@ -26,11 +26,11 @@
 
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
-occlusions::sideOcclusions bool_msg;
+occlusions::sideOcclusions bool_msg;            //6 boolians variables (big,small,wall- for right and left)
 
-double AgeThreshold=0;
-double ConfidenceTheshold=0.6; //1.1
-double HeightTheshold=1.4;
+double AgeThreshold=0;                          //how "old" is the ID
+double ConfidenceTheshold=0.6; //1.1            //from the SVM+HOG classifier- confidence for a real person
+double HeightTheshold=1.4;                      //height in meter of the person
 
 namespace enc = sensor_msgs::image_encodings;
 using namespace cv;
@@ -45,41 +45,38 @@ class ImageConverter
     image_transport::Subscriber image_sub;
     image_transport::Publisher image_pub;
 
-    ros::Subscriber person_sub = n.subscribe("/tracker/tracks", 10, &ImageConverter::boxCallback, this);  //info about people tracking
-    ros::Publisher side= (n.advertise<occlusions::sideOcclusions>("occlusions/sideOcclusions",10));
+    ros::Subscriber person_sub = n.subscribe("/tracker/tracks", 10, &ImageConverter::boxCallback, this);  //get the track parameters
+    ros::Publisher side= (n.advertise<occlusions::sideOcclusions>("occlusions/sideOcclusions",10));       //publish the 6 boolians
 
-    double xmin=0;  //from depth image, using the subscriber of people tracking
-    double ymin=0;
-    double xmax=0;
-    double ymax=0;
-    double xcenter;
-    double personCentroid;
-    double distance;
-    double confidence;
-    double age;
-    double height;
+    double xmin=0;                      //top-left of the BBC (Bounding Box Coordinates)from the DEPTH image
+    double ymin=0;                      //bottom-left of the BBC from the DEPTH image
+    double xmax=0;                      //top-right of the BBC from the DEPTH image
+    double ymax=0;                      //bottom-right of the BBC from the DEPTH image
+    double xcenter;                     //the center of the box in x axis at the DEPTH image
 
-    double rgbxmin=0;  //for rgb image
-    double rgbymin=0;
-    double rgbxmax=0;
-    double rgbymax=0;
-    double xc;
-    double yc;
-    double xcBox;
+    double distance;                    //from Open_PTrack trackers- distance in meters to the detect person
+    double confidence;                  //from Open_PTrack trackers- from the SVM+HOG classifier- confidence for a real person
+    double age;                         //from Open_PTrack trackers
+    double height;                      //from Open_PTrack trackers
 
-    bool validTrack;
-    int nbOfTracks;
-    bool LeftWall= false;
-    bool RightWall= false;
+    double rgbxmin=0;                   //top-left of the BBC from the MONO image
+    double rgbymin=0;                   //bottom-left of the BBC from the MONO image
+    double rgbxmax=0;                   //top-right of the BBC from the MONO image
+    double rgbymax=0;                   //bottom-right of the BBC from the MONO image
+    double xc;                          //the center of the box in x axis from the MONO image
+    double yc;                          //the 1/3 upper body from the MONO umage
+    double xcBox;                       //the center of the box in the ROI
+
+    bool validTrack;                    //good track
+    int nbOfTracks;                     //number of ID tracks
+    bool LeftWall= false;               //detect left wall
+    bool RightWall= false;              //detect right wall
 
 public:
     ImageConverter()
       : it_(n)
     {
-   //   image_sub = it_.subscribe("/kinect2_head/rgb_rect/image", 10, &ImageConverter::imageCallback, this);
-   //   image_sub = it_.subscribe("/kinect2_head/rgb_lowres/image", 10, &ImageConverter::imageCallback, this);
       image_sub = it_.subscribe("/kinect2_head/mono_rect/image", 10, &ImageConverter::imageCallback, this);  //get the mono_rect image (gray image)
-
       image_pub = it_.advertise("/image_converter/output_video", 1);
 
       cv::namedWindow(OPENCV_WINDOW);
@@ -90,36 +87,23 @@ public:
     }
 
 
-void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){
+void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){              //get all the tracks parameters from Open_PTrack
 
     bool validTrack=false;
 
     int nbOfTracks=msg->tracks.size();
      if (nbOfTracks>0) {
          for(int i=0;i<nbOfTracks && !validTrack;i++){
-             //oldest track which is older than the age threshold and above the confidence threshold
+             //oldest track which is older than the age threshold and above the confidence threshold and above the height threshold
              if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
-    xmin=msg->tracks[i].box_2D.x;  //the resolotion of mono_rect is twice the resolotion of depth_rect
-    ymin=msg->tracks[i].box_2D.y;
-    xmax=xmin+msg->tracks[i].box_2D.width;
-    ymax=ymin+msg->tracks[i].box_2D.height;
-    distance=msg->tracks[i].distance;
-    confidence=msg->tracks[i].confidence;
-    height=msg->tracks[i].height;
-    age=msg->tracks[i].age;
-
-//    ROS_INFO("xmin: %f", xmin);
-//    ROS_INFO("ymin: %f", ymin);
-//    ROS_INFO("xmax: %f", xmax);
-//    ROS_INFO("ymax: %f", ymax);
-//  ROS_INFO("rgbxmin: %f", rgbxmin);
-//  ROS_INFO("rgbymin: %f", rgbymin);
-//  ROS_INFO("rgbxmax: %f", rgbxmax);
-//  ROS_INFO("rgbymax: %f", rgbymax);
-//    ROS_INFO("Confidence: %f", confidence);
-//    ROS_INFO("Height: %f", height);
-//    ROS_INFO("age: %f", age);
-//    ROS_INFO("distance: %f", distance);
+    xmin=msg->tracks[i].box_2D.x;                //top-left of the BBC (Bounding Box Coordinates)from the DEPTH image
+    ymin=msg->tracks[i].box_2D.y;                //bottom-left of the BBC from the DEPTH image
+    xmax=xmin+msg->tracks[i].box_2D.width;       //top-right of the BBC from the DEPTH image
+    ymax=ymin+msg->tracks[i].box_2D.height;      //bottom-right of the BBC from the DEPTH image
+    distance=msg->tracks[i].distance;            //from Open_PTrack trackers- distance in meters to the detect person
+    confidence=msg->tracks[i].confidence;        //from Open_PTrack trackers- from the SVM+HOG classifier- confidence for a real person
+    height=msg->tracks[i].height;                //from Open_PTrack trackers
+    age=msg->tracks[i].age;                      //from Open_PTrack trackers
 
 validTrack=true;
 
@@ -146,7 +130,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     cv::Mat deleteMargin= cv::Mat::zeros(1080,1710,0);
     deleteMargin = cv_ptr->image(Rect(104,0,1710,1080)).clone();  //take only the BBC with the person with margin depend on distance
 
-    cv::Size size(960,540);  //size of the depth image
+    cv::Size size(960,540);  //size of the depth image   //the resolotion of mono_rect is twice the resolotion of depth_rect
     cv::resize(deleteMargin,deleteMargin,size);  //resize the gray mono image to the depth image size
 
        xcenter=(xmin+xmax)/2;  //the center of the box in x axis at the DEPTH image
@@ -167,7 +151,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     int smallOcclusions= round((xcBox-xmin*2+round(((270-xcenter)/2)-(distance*3)))/3);  //detect small occlusion
     int bigOcclusions= round((xcBox-xmin*2+round(((270-xcenter)/2)-(distance*3)))/2);    //detect big occlusion
 
-    xcBox=((xmax-xmin)*1.3+marginAdd*2)/2;
+    xcBox=((xmax-xmin)*1.4+marginAdd*2)/2;
     cv::Mat temp= cv::Mat::zeros(540,960,0);
 
     int top = (int) (0.01*temp.rows);
