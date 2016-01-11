@@ -26,11 +26,11 @@ cv::Scalar red(0,255,0);
 
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
-occlusions::sideOcclusions bool_msg;
+occlusions::sideOcclusions bool_msg;  //6 boolians variables (big,small,wall- for right and left)
 
-double AgeThreshold=0;
-double ConfidenceTheshold=0.6; //1.1
-double HeightTheshold=1.4;
+double AgeThreshold=0;  //how "old" is the ID
+double ConfidenceTheshold=0.6; //1.1    //from the SVM+HOG classifier- confidence for a real person
+double HeightTheshold=1.4;   //height in meter of the person
 
 namespace enc = sensor_msgs::image_encodings;
 
@@ -43,36 +43,36 @@ class ImageConverter
     image_transport::Subscriber image_sub;
     image_transport::Publisher image_pub;
 
-    ros::Subscriber person_sub = n.subscribe("/tracker/tracks", 10, &ImageConverter::boxCallback, this);
-    ros::Publisher side= (n.advertise<occlusions::sideOcclusions>("occlusions/sideOcclusions",10));
+    ros::Subscriber person_sub = n.subscribe("/tracker/tracks", 10, &ImageConverter::boxCallback, this);  //get the track parameters
+    ros::Publisher side= (n.advertise<occlusions::sideOcclusions>("occlusions/sideOcclusions",10));   //publish the 6 boolians
 
-    double xmin=0;
-    double ymin=0;
-    double xmax=0;
-    double ymax=0;
-    double personCentroid;
-    double distance;
-    double confidence;
-    double age;
-    double height;
-    double xc;
-    double yc;
-    float depth;
-    float personDepth;
+    double xmin=0;                 //top-left of the BBC (Bounding Box Coordinates)
+    double ymin=0;                 //bottom-left of the BBC
+    double xmax=0;                 //top-right of the BBC
+    double ymax=0;                 //bottom-right of the BBC
+
+    double personCentroid;         //from Open_PTrack trackers
+    double distance;               //from Open_PTrack trackers- distance in meters to the detect person
+    double confidence;             //from Open_PTrack trackers- from the SVM+HOG classifier- confidence for a real person
+    double age;                    //from Open_PTrack trackers
+    double height;                 //from Open_PTrack trackers
+    double xc;                     //center of the BBC
+    double yc;                     //1/3 upper of the BBC
+    float depth;                   //pixel depth value at xc,yc
+    float personDepth;             //distance*1000
 
  //   double depthTheshold=800.0;
-    double depthTheshold=3.0;
+    double depthTheshold=3.0;      //threshold for detect closer pixels from the personDepth value
 
-    bool validTrack;
-    int nbOfTracks;
-    float temp;
+    bool validTrack;               //good track
+    int nbOfTracks;                //number of ID tracks
+    float normalize;               //normalize the depth value
 
 public:
     ImageConverter()
       : it_(n)
     {
-      image_sub = it_.subscribe("/kinect2_head/depth_rect/image", 10, &ImageConverter::imageCallback, this);
-    //  image_sub = it_.subscribe("/kinect2_head/ir_rect_eq/image", 10, &ImageConverter::imageCallback, this);
+      image_sub = it_.subscribe("/kinect2_head/depth_rect/image", 10, &ImageConverter::imageCallback, this);   //depth image (same as Open_PTrack uses)
       image_pub = it_.advertise("/image_converter/output_video", 1);
 
       cv::namedWindow(OPENCV_WINDOW);
@@ -83,32 +83,23 @@ public:
     }
 
 
-void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){
+void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){    //get all the tracks parameters from Open_PTrack
 
     bool validTrack=false;
 
     int nbOfTracks=msg->tracks.size();
      if (nbOfTracks>0) {
          for(int i=0;i<nbOfTracks && !validTrack;i++){
-             //oldest track which is older than the age threshold and above the confidence threshold
+             //oldest track which is older than the age threshold and above the confidence threshold and above the height threshold
              if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
-    xmin=msg->tracks[i].box_2D.x;
-    ymin=msg->tracks[i].box_2D.y;
-    xmax=xmin+msg->tracks[i].box_2D.width;
-    ymax=ymin+msg->tracks[i].box_2D.height;
-    distance=msg->tracks[i].distance;
-    confidence=msg->tracks[i].confidence;
-    height=msg->tracks[i].height;
-    age=msg->tracks[i].age;
-
-//    ROS_INFO("xmin: %f", xmin);
-//    ROS_INFO("ymin: %f", ymin);
-//    ROS_INFO("xmax: %f", xmax);
-//    ROS_INFO("ymax: %f", ymax);
-//    ROS_INFO("Confidence: %f", confidence);
-//    ROS_INFO("Height: %f", height);
-//    ROS_INFO("age: %f", age);
-//    ROS_INFO("distance: %f", distance);
+    xmin=msg->tracks[i].box_2D.x;             //top-left of the BBC (Bounding Box Coordinates)
+    ymin=msg->tracks[i].box_2D.y;             //bottom-left of the BBC
+    xmax=xmin+msg->tracks[i].box_2D.width;    //top-right of the BBC
+    ymax=ymin+msg->tracks[i].box_2D.height;   //bottom-right of the BBC
+    distance=msg->tracks[i].distance;         //from Open_PTrack trackers- distance in meters to the detect person
+    confidence=msg->tracks[i].confidence;     //from Open_PTrack trackers- from the SVM+HOG classifier- confidence for a real person
+    height=msg->tracks[i].height;             //from Open_PTrack trackers
+    age=msg->tracks[i].age;                   //from Open_PTrack trackers
 
 validTrack=true;
 
@@ -118,12 +109,12 @@ validTrack=true;
 }
 
 
-void imageCallback(const sensor_msgs::ImageConstPtr& msg)
+void imageCallback(const sensor_msgs::ImageConstPtr& msg)     //working on the depth image
 {
     cv_bridge::CvImagePtr cv_ptr;
     try
     {
-      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_16UC1);//now cv_ptr is the matrix
+      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_16UC1);   //now cv_ptr is the matrix
     }
     catch (cv_bridge::Exception& e)
     {
@@ -135,25 +126,22 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     //      cv::imshow(OPENCV_WINDOW, cv_ptr->image);
     //      cv::waitKey(3);
 
-          // Output modified video stream
-          image_pub.publish(cv_ptr->toImageMsg());
+          image_pub.publish(cv_ptr->toImageMsg());      // Output modified video stream
 
-    xc=(xmin+xmax)/2;
-    yc=ymin+(ymax-ymin)/3; //the 1/3 upper body
+
+    xc=(xmin+xmax)/2;                        //center of the BBC
+    yc=ymin+(ymax-ymin)/3;                   //1/3 upper of the BBC
 //    depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
-    personDepth=distance*1000;  //to avoid an error from calculate the depth only from one pixel, it's better to calculate from the all distance from the person and multipile by 1000 to get milimeters
-    depth=personDepth*255/pow(2,16);  //to normalize to 255
-
+    personDepth=distance*1000;               //to avoid an error from calculate the depth only from one pixel, it's better to calculate from the all distance from the person and multipile by 1000 to get milimeters
+    depth=personDepth*255/pow(2,16);         //to normalize to 255
 
     ROS_INFO("personDepth: %f", personDepth);
-  //  ROS_INFO("depth1: %f", depth1);
-  //  ROS_INFO("depth2 %f", depth2);
 
 //left and right detections
-    int downCut= round((ymax-ymin)/8);  //to cut the lower part of the person for reduce floor alarm
+    int downCut= round((ymax-ymin)/8);                          //to cut the lower part of the person for reduce floor alarm
     int smallOcclusions= round(((xc-xmin)/3)*(ymax-ymin)*7/8);  //detect small occlusion
     int bigOcclusions= round(((xc-xmin)/2)*(ymax-ymin)*7/8);    //detect big occlusion
-    int marginAdd= round(10/distance);  //add margin depend on distance
+    int marginAdd= round(10/distance);                          //add margin depend on distance
 
     // size of a pixel depend on depth
    // x = (X - 3.3931e+02) * z / 5.9421e+02
@@ -162,75 +150,72 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     int countLeft= 0;
     int countRight= 0;
 
-    bool smallLeftOcclusions= false; //detect occlusion from the left (point of view of the robot)
-    bool bigLeftOcclusions= false; //detect occlusion from the left (point of view of the robot)
-    bool LeftWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+    bool smallLeftOcclusions= false;    //detect occlusion from the left (point of view of the robot)
+    bool bigLeftOcclusions= false;      //detect occlusion from the left (point of view of the robot)
+    bool LeftWall= false;               //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
     int countLeftWall= 0;
 
-    bool smallRightOcclusions= false; //detect occlusion from the left (point of view of the robot)
-    bool bigRightOcclusions= false; //detect occlusion from the left (point of view of the robot)
-    bool RightWall= false; //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+    bool smallRightOcclusions= false;   //detect occlusion from the left (point of view of the robot)
+    bool bigRightOcclusions= false;     //detect occlusion from the left (point of view of the robot)
+    bool RightWall= false;              //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
     int countRightWall= 0;
 
     if ((age>AgeThreshold) && (confidence>ConfidenceTheshold) && (height>HeightTheshold)){
 
    //left
-        for (short int i=xmin-marginAdd;i<xc-5;i++){
+        for (short int i=xmin-marginAdd;i<xc-5;i++){                       //over each colom from the left with margin up to the center minus 5
             countLeftWall= 0;
-            for (short int j=ymin;j<ymax-downCut;j++){
-        temp=cv_ptr->image.at<short int>(cv::Point(i,j));
-        temp=temp*255/pow(2,16);  //to normalize to 255
+            for (short int j=ymin;j<ymax-downCut;j++){                     //over all the specific colom from up to down without the lower part to avoid the floor
+        normalize=cv_ptr->image.at<short int>(cv::Point(i,j));             //get the depth value for each pixel
+        normalize=normalize*255/pow(2,16);                                 //normalize the depth value to 0-255
 
-                if (temp<(depth-depthTheshold)){
+                if (normalize<(depth-depthTheshold)){                      //closer than the personDepth
                    countLeft++;
                    countLeftWall++;
-                   if (countLeftWall==ymax-downCut-ymin){LeftWall=true;}
+                   if (countLeftWall==ymax-downCut-ymin){LeftWall=true;}   //if the all colom is closer than this is a wall
                }
         }
     }
 
    //right
-        for (short int i=xc+5;i<xmax+marginAdd;i++){
+        for (short int i=xc+5;i<xmax+marginAdd;i++){                       //over each colom from the center plus 5 up to the right with margin
             countRightWall= 0;
-            for (short int j=ymin;j<ymax-downCut;j++){
-        temp=cv_ptr->image.at<short int>(cv::Point(i,j));
-        temp=temp*255/pow(2,16);  //to normalize to 255
-                if (temp<(depth-depthTheshold)){
+            for (short int j=ymin;j<ymax-downCut;j++){                     //over all the specific colom from up to down without the lower part to avoid the floor
+        normalize=cv_ptr->image.at<short int>(cv::Point(i,j));             //get the depth value for each pixel
+        normalize=normalize*255/pow(2,16);                                 //normalize the depth value to 0-255
+
+                if (normalize<(depth-depthTheshold)){                      //closer than the personDepth
                    countRight++;
                    countRightWall++;
-                   if (countRightWall==ymax-downCut-ymin){RightWall=true;}
+                   if (countRightWall==ymax-downCut-ymin){RightWall=true;} //if the all colom is closer than this is a wall
                }
         }
     }
 
-  //      ROS_INFO("LeftWall: %d", LeftWall);
-  //      ROS_INFO("depth-depthTheshold: %f", depth-depthTheshold);
-
-
-        if (countLeft>smallOcclusions&&countLeft<bigOcclusions){
+        if (countLeft>smallOcclusions&&countLeft<bigOcclusions){           //if number of pixels from the left are between smallLeftOcclusions and bigLeftOcclusions this is a smallLeft
             smallLeftOcclusions=true;
             ROS_INFO("LeftOcclusions: small %d", countLeft);
         }
-        else  if (countLeft>bigOcclusions){
+        else  if (countLeft>bigOcclusions){                                //if number of pixels from the left are more than bigLeftOcclusions this is a bigLeft
             bigLeftOcclusions=true;
             ROS_INFO("LeftOcclusions: big %d", countLeft);
         }
-        else {ROS_INFO("LeftOcclusions: false %d", countLeft);
+        else {ROS_INFO("LeftOcclusions: false %d", countLeft);             //else there is no occlusions
   //      ROS_INFO("depth: %f", depth);
         }
 
         ROS_INFO("RightWall: %d", RightWall);
         ROS_INFO("LeftWall: %d", LeftWall);
 
-        if (countRight>smallOcclusions&&countRight<bigOcclusions){
+        if (countRight>smallOcclusions&&countRight<bigOcclusions){         //if number of pixels from the right are between smallRightOcclusions and bigRightOcclusions this is a smallRight
             smallRightOcclusions=true;
             ROS_INFO("RightOcclusions: small %d", countRight);
         }
-        else  if (countRight>bigOcclusions){
+        else  if (countRight>bigOcclusions){                               //if number of pixels from the right are more than bigRightOcclusions this is a bigRight
             bigRightOcclusions=true;
             ROS_INFO("RightOcclusions: big %d", countRight);
         }
-        else {ROS_INFO("RightOcclusions: false %d", countRight);
+        else {ROS_INFO("RightOcclusions: false %d", countRight);           //else there is no occlusions
     //    ROS_INFO("depth: %f", depth);
         }
 }
