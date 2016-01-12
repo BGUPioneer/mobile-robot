@@ -106,7 +106,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 //Set command Twist
           //      if(smallError==false ){  //to reduce vibration around 0 angle of the kinect view, and 0 robot angle  // && abs(AngleErrorPan)<0.05
           //    cmd_vel.angular.z = (AngleErrorPan+followingAngle)*KpAngle;
-                cmd_vel.angular.z = -(AngleError+0.5236)*KpAngle; //30 deg
+                cmd_vel.angular.z = (AngleError+0.5236)*KpAngle; //30 deg
 
 
 

@@ -1,3 +1,158 @@
+
+#include "ros/ros.h"
+#include <std_msgs/Float64.h>
+#include <std_msgs/Float32.h>
+#include "std_msgs/String.h"
+#include "opt_msgs/TrackArray.h"
+#include "sensor_msgs/JointState.h"
+#include <ros/console.h>
+#include "math.h"
+#include "trajectory_msgs/JointTrajectory.h"
+#include "trajectory_msgs/JointTrajectoryPoint.h"
+#include "nav_msgs/Odometry.h"
+
+
+
+
+class PanMove
+{
+    ros::NodeHandle n;
+    ros::Time lastTrackTime;
+    ros::Subscriber sub1;
+    ros::Publisher pub;
+    ros::Subscriber sub2;
+
+    double ConfidenceTheshold=1.1;
+    double HeightTheshold=1.4;
+    double HeightMaxTheshold=2.0;
+
+    int TrackedID=0;
+
+    double CurrentPosition=0;
+
+    double KpAngle=0.2;
+
+    ros::Publisher command_pub;
+    ros::Publisher error_pub;
+    std_msgs::Float32 error_command;
+    //ros::Publisher command_trajectory_pub;
+
+    ros::ServiceClient setspeed_service;
+
+    std_msgs::Float64 pan_command;
+
+    //ros::Time lastTrackTime;
+
+    double polarity=0;
+    double servo_max_speed=0.5;
+    double servo_min_speed=0.0001;
+    double last_speed=0.0001;
+    double AngleErrorPan;
+    bool validTrack=false;
+    double AngleError=0;
+
+    //trajectory_msgs::JointTrajectoryPoint traj_point;
+    //trajectory_msgs::JointTrajectory command_trajectory;
+
+    bool TrackInitialized=false;
+    //SpeedVersion
+
+
+public:
+    PanMove()
+    {
+        sub1 = n.subscribe("/tracker/tracks", 10, &PanMove::personCallback, this);
+        pub = n.advertise<std_msgs::Float32>("/Pan_Error_Command", 1);
+        sub2 = n.subscribe("/Pan_Feedback", 10, &PanMove::panCallback, this);
+    }
+
+void panCallback(const std_msgs::Float32::ConstPtr& msg)
+{
+    AngleErrorPan=msg->data;
+ //   ROS_INFO("feedback: %f" , AngleErrorPan);
+
+  //  if (abs(AngleErrorPan)>0.2 && !validTrack){error_command.data=-0.001*AngleErrorPan;}
+    //         else {error_command.data=0.0;}
+      //   ROS_INFO("feedback: %f" , AngleErrorPan);
+        // pub.publish(error_command);
+
+}
+
+void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
+{
+    bool validTrack=false;
+    double AngleError=0;
+
+    //Get the number of tracks in the TrackArray
+    int nbOfTracks=msg->tracks.size();
+
+    //If at least 1 track, proceed
+    if (nbOfTracks>0) {
+
+        if (!TrackInitialized){
+        for(int i=0;i<nbOfTracks;i++){
+            if ((msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold) && (msg->tracks[i].height<HeightMaxTheshold)){
+                TrackedID=msg->tracks[i].id;
+                TrackInitialized=true;
+                ROS_INFO("Found track meeting threshold requirement: %d", TrackedID);
+            }
+        }
+        }
+        if (!TrackInitialized){
+            ROS_INFO("No valid track found");
+        }else
+        {
+            for(int i=0;i<nbOfTracks && !validTrack;i++){
+                if (msg->tracks[i].id==TrackedID){
+                    //Calculate angle error
+                    AngleError=atan2(msg->tracks[i].y,msg->tracks[i].x);
+                    ROS_INFO("Error: %f", AngleError);
+                    //Stop for loop
+                    validTrack=true;
+                    lastTrackTime=ros::Time::now();
+                }
+            }
+        }
+    }
+    ROS_INFO("valid %d" , validTrack);
+
+    error_command.data=AngleError;
+ //   pub.publish(error_command);
+    if (!validTrack){
+       error_command.data=-0.5*AngleErrorPan;
+     //   if (abs(AngleErrorPan)>0.2){error_command.data=-0.1*AngleErrorPan;
+
+      //       pub.publish(error_command);
+
+            ROS_INFO("feedback: %f" , AngleErrorPan);
+            if ((ros::Time::now()-lastTrackTime)>ros::Duration(3))
+                {
+                    TrackInitialized=false;
+                    ROS_INFO("3 sec since last track seen, try to find it");
+
+                }
+        }
+    pub.publish(error_command);
+
+}
+
+};
+
+
+int main(int argc, char **argv){
+
+
+     ros::init(argc, argv, "orientation_control");
+     PanMove pm;
+     ros::NodeHandle n;
+
+     ros::spin();
+     return 0;
+}
+
+
+////////////////////////////////////////////work without returning back to the center
+/*
 #include "ros/ros.h"
 #include <std_msgs/Float64.h>
 #include <std_msgs/Float32.h>
@@ -199,3 +354,4 @@ int main(int argc, char **argv){
      ros::spin();
      return 0;
 }
+*/

@@ -30,7 +30,8 @@ occlusions::sideOcclusions bool_msg;            //6 boolians variables (big,smal
 
 double AgeThreshold=0;                          //how "old" is the ID
 double ConfidenceTheshold=0.6; //1.1            //from the SVM+HOG classifier- confidence for a real person
-double HeightTheshold=1.4;                      //height in meter of the person
+double HeightTheshold=1.4;                      //height in meter of the person (minimum)
+double HeightMaxTheshold=2.0;                   //height in meter of the person (maximum)
 
 namespace enc = sensor_msgs::image_encodings;
 using namespace cv;
@@ -94,8 +95,8 @@ void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){              //get 
     int nbOfTracks=msg->tracks.size();
      if (nbOfTracks>0) {
          for(int i=0;i<nbOfTracks && !validTrack;i++){
-             //oldest track which is older than the age threshold and above the confidence threshold and above the height threshold
-             if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
+             //oldest track which is older than the age threshold and above the confidence threshold and above the height threshold and under max height threshold
+             if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold) && (msg->tracks[i].height<HeightMaxTheshold)){
     xmin=msg->tracks[i].box_2D.x;                //top-left of the BBC (Bounding Box Coordinates)from the DEPTH image
     ymin=msg->tracks[i].box_2D.y;                //bottom-left of the BBC from the DEPTH image
     xmax=xmin+msg->tracks[i].box_2D.width;       //top-right of the BBC from the DEPTH image

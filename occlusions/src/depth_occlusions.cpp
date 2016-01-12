@@ -30,7 +30,9 @@ occlusions::sideOcclusions bool_msg;  //6 boolians variables (big,small,wall- fo
 
 double AgeThreshold=0;  //how "old" is the ID
 double ConfidenceTheshold=0.6; //1.1    //from the SVM+HOG classifier- confidence for a real person
-double HeightTheshold=1.4;   //height in meter of the person
+double HeightTheshold=1.4;   //height in meter of the person (minimum)
+double HeightMaxTheshold=2.0;   //height in meter of the person (maximum)
+
 
 namespace enc = sensor_msgs::image_encodings;
 
@@ -90,8 +92,8 @@ void boxCallback(const opt_msgs::TrackArray::ConstPtr& msg){    //get all the tr
     int nbOfTracks=msg->tracks.size();
      if (nbOfTracks>0) {
          for(int i=0;i<nbOfTracks && !validTrack;i++){
-             //oldest track which is older than the age threshold and above the confidence threshold and above the height threshold
-             if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
+             //oldest track which is older than the age threshold and above the confidence threshold and above the height threshold and under max height threshold
+             if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold) && (msg->tracks[i].height<HeightMaxTheshold)){
     xmin=msg->tracks[i].box_2D.x;             //top-left of the BBC (Bounding Box Coordinates)
     ymin=msg->tracks[i].box_2D.y;             //bottom-left of the BBC
     xmax=xmin+msg->tracks[i].box_2D.width;    //top-right of the BBC
@@ -160,7 +162,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)     //working on the d
     bool RightWall= false;              //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
     int countRightWall= 0;
 
-    if ((age>AgeThreshold) && (confidence>ConfidenceTheshold) && (height>HeightTheshold)){
+    if ((age>AgeThreshold) && (confidence>ConfidenceTheshold) && (height>HeightTheshold) && height<HeightMaxTheshold){
 
    //left
         for (short int i=xmin-marginAdd;i<xc-5;i++){                       //over each colom from the left with margin up to the center minus 5

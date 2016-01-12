@@ -31,8 +31,9 @@ class LaserObstacles
 
     ros::Publisher pub=(n.advertise<obstacles::laserObstacles> ("/obstacles/laserObstacles",10));
 
-    double DistanceCheck=2.0;  //in front of the robot
-    double WidthCheck= 0.4;  //for each side
+    double DistanceCheck=1.5;  //in front of the robot
+    double WidthCheck= 0.5;  //for each side
+    double DistanceSlowDownCheck= 2.5;  //for each side
     double angularVelocity;
     double linearVelocity;
     double xLaserPerson;
@@ -45,17 +46,21 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
     int nbOfTracksLaser=msg->people.size();
 
     if (nbOfTracksLaser>0) {
+        for(int i=0; i<nbOfTracksLaser;i++){
         //Extract coordinates of first detected person
-        xLaserPerson=msg->people[0].pos.x;
-        yLaserPerson=msg->people[0].pos.y;
+        xLaserPerson=msg->people[i].pos.x;
+        yLaserPerson=msg->people[i].pos.y;
         }
+    }
 }
 
 void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
 {
   sensor_msgs::PointCloud pc_out;
   bool obstacle=false;
+  bool SlowDown=false;
   double angularCommand;
+  double linearCommand;
   double XclosestObstacle=100.0;
   double YclosestObstacle=100.0;
   double DclosestObstacle=100.0;
@@ -66,7 +71,7 @@ void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
   for (int i=0; i<pc_out.points.size() ;i++)
   {
       //an obstacle inside the DistanceCheck and more than radiusPerson from a detected legs
-      if ((pc_out.points[i].x < DistanceCheck) && (pc_out.points[i].x >0)  && (sqrt(pow(pc_out.points[i].x-xLaserPerson,2)+pow(pc_out.points[i].y-yLaserPerson,2))>radiusPerson))
+      if ((pc_out.points[i].x < DistanceSlowDownCheck) && (pc_out.points[i].x >-abs(angularVelocity))  && (sqrt(pow(pc_out.points[i].x-xLaserPerson,2)+pow(pc_out.points[i].y-yLaserPerson,2))>radiusPerson))
       {
           //2 conditions: 1. y smaller than positive WidthCheck multipile the power of the turn of the robot; 2.y bigger than negative WidthCheck multipile the power of the turn of the robot;
           if ((pc_out.points[i].y < WidthCheck*(1+angularVelocity)) && (pc_out.points[i].y > -WidthCheck*(1-angularVelocity))){
@@ -84,20 +89,29 @@ void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
         }
       }
   }
-  //if obstacle from the left than turn right (positive angular velocity)
-  if (YclosestObstacle>=0){
-  angularCommand=(WidthCheck-YclosestObstacle)/10;
-  }
-  //if obstacle from the right than turn left (negative angular velocity)
-  else {
-      angularCommand=-(WidthCheck+YclosestObstacle)/10;
-  }
-  //publish the variables
-    ob_msg.detect_obstacles=obstacle;
-    ob_msg.angular_velocity= angularCommand;
-    pub.publish(ob_msg);
-    ROS_INFO("angularCommand :%f", angularCommand);
-
+    if(XclosestObstacle < DistanceCheck){
+      if(linearVelocity>0.2){linearCommand=0.2;}     //move slow near obstacles
+        else {linearCommand=linearVelocity;}
+      //if obstacle from the left than turn right (positive angular velocity)
+      if (YclosestObstacle>=0){
+      angularCommand=-(WidthCheck-YclosestObstacle)/2;
+      }
+      //if obstacle from the right than turn left (negative angular velocity)
+      else {
+          angularCommand=(WidthCheck+YclosestObstacle)/2;
+      }
+    }else if(linearVelocity>0.3){
+        linearCommand=0.3;
+        angularCommand=angularVelocity;
+        SlowDown=true;
+    }else {linearCommand=linearVelocity;}
+      //publish the variables
+        ob_msg.detect_obstacles=obstacle;
+        ob_msg.slow_down=SlowDown;
+        ob_msg.angular_velocity= angularCommand;
+        ob_msg.linear_velocity= linearCommand;
+        pub.publish(ob_msg);
+        ROS_INFO("angularCommand :%f", angularCommand);
 }
 
 

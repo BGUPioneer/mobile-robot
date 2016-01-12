@@ -16,7 +16,7 @@
 double KpAngle=0.5;
 double KpDistance=0.5;
 double DistanceTarget=1.2;
-double MaxSpeed=1.2;
+double MaxSpeed=0.8;
 ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
 double min=1;
@@ -26,7 +26,8 @@ double timepreviousmeasure=0;
 
 double AgeThreshold=0;
 double ConfidenceTheshold=1.1;
-double HeightTheshold=1.4;
+double HeightTheshold=1.4;   //height in meter of the person (minimum)
+double HeightMaxTheshold=2.0;   //height in meter of the person (maximum)
 double AngleErrorPan=0;
 bool smallError=false;
 double smallErrorThreshold=0.01;
@@ -74,7 +75,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
         //looping throught the TrackArray
         for(int i=0;i<nbOfTracks && !validTrack;i++){
             //oldest track which is older than the age threshold and above the confidence threshold
-            if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
+            if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold) && (msg->tracks[i].height<HeightMaxTheshold)){
                 //Calculate angle error
             //    double AngleError=atan2(msg->tracks[i].y,msg->tracks[i].x);
             //    double AngleError=atan2(msg->tracks[i].y*(sin((AngleErrorPan*180)/ PI)),msg->tracks[i].x*(cos((AngleErrorPan*180)/ PI)));
@@ -104,7 +105,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 //Set command Twist
           //      if(smallError==false ){  //to reduce vibration around 0 angle of the kinect view, and 0 robot angle  // && abs(AngleErrorPan)<0.05
           //    cmd_vel.angular.z = (AngleErrorPan+followingAngle)*KpAngle;
-                cmd_vel.angular.z = -(AngleError)*KpAngle;
+                cmd_vel.angular.z = (AngleError)*KpAngle;
           //      cmd_vel.angular.z = -(AngleError+0.5236)*KpAngle; //30 deg
           //      cmd_vel.angular.z = -(AngleError+1.0472)*KpAngle; //60 deg
 

@@ -33,9 +33,9 @@ class kinect2_pan_laser
     ros::Publisher cmd_vel_pub;
 
          double KpAngle=0.5;
-         double KpDistance=0.5;
+         double KpDistance=0.3;
          double DistanceTarget=1.2;
-         double MaxSpeed=1.2;
+         double MaxSpeed=0.8;
          double min=1;
          double xp=0;
          double yp=0;
@@ -59,7 +59,10 @@ class kinect2_pan_laser
          bool SmallRight;
          bool WallRight;
          bool laser_obstacle_flag;
+         bool slow_down_flag;
          double laser_angular_velocity=0;
+         double laser_linear_velocity=0;
+
 
 public:
       kinect2_pan_laser()
@@ -98,11 +101,13 @@ void LaserObstaclesCallback(const obstacles::laserObstacles::ConstPtr& msg)
 {
     laser_obstacle_flag=msg->detect_obstacles;
     laser_angular_velocity=msg->angular_velocity;
+    laser_linear_velocity=msg->linear_velocity;
+    slow_down_flag=msg->slow_down;
     ROS_INFO("laser_obstacle_flag: %d", laser_obstacle_flag);
     ROS_INFO("laser_angular_velocity: %f", laser_angular_velocity);
     if (laser_obstacle_flag){
     cmd_vel.angular.z = laser_angular_velocity;  //turn to avoid obstacles
-    cmd_vel.linear.x = 0.2;
+    cmd_vel.linear.x = laser_linear_velocity;
     cmd_vel_pub.publish(cmd_vel);
     }
 }
@@ -135,23 +140,24 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        double DistanceErrorLaser=sqrt(pow(xLaserPerson,2)+pow(yLaserPerson,2));
 
        if(!laser_obstacle_flag){
-       cmd_vel.angular.z = AngleErrorLaser*KpAngle;
-       }
-       double linearspeedLaser=(DistanceErrorLaser-DistanceTarget)*KpDistance;
+           cmd_vel.angular.z = AngleErrorLaser*KpAngle;
 
-       if (linearspeedLaser>MaxSpeed)
-       {
-           linearspeedLaser=MaxSpeed;
-       }
+           double linearspeedLaser=(DistanceErrorLaser-DistanceTarget)*KpDistance;
 
-       if (linearspeedLaser<0){
-           linearspeedLaser=0;
-       }
-        cmd_vel.linear.x = linearspeedLaser;
+           if (linearspeedLaser>MaxSpeed)
+           {
+               linearspeedLaser=MaxSpeed;
+           }
+
+           if (linearspeedLaser<0){
+               linearspeedLaser=0;
+           }
+            cmd_vel.linear.x = linearspeedLaser;
+           cmd_vel_pub.publish(cmd_vel);
        }
      }
 
-   cmd_vel_pub.publish(cmd_vel);
+  }
 }
 
 void panCallback(const std_msgs::Float32::ConstPtr& msg)
@@ -210,8 +216,8 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
           //      if(smallError==false ){  //to reduce vibration around 0 angle of the kinect view, and 0 robot angle  // && abs(AngleErrorPan)<0.05
           //    cmd_vel.angular.z = (AngleErrorPan+followingAngle)*KpAngle;
                 if (!laser_obstacle_flag){
-                cmd_vel.angular.z = -(AngleError+followingAngle)*KpAngle;
-                }
+                cmd_vel.angular.z = (AngleError+followingAngle)*KpAngle;
+
          //       ROS_INFO("cmd_vel.angular.z: %f", cmd_vel.angular.z);
 
 
@@ -228,23 +234,12 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 }
                 //Stop for loop
                 validTrack=true;
-            }
-            else{
- /*               ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
-                ROS_INFO("Height: %f", 0.0);
-                ROS_INFO("distance: %f", 0.0);
-                ROS_INFO("age: %f", 0.0);
-                ROS_INFO("AngleError: %f", 90.0);
-                ROS_INFO("AngleErrorPan: %f", 180.0);
-                ROS_INFO("xperson: %f", 0.0);
-                ROS_INFO("yperson: %f", 0.0);
- */
-            }
+                cmd_vel_pub.publish(cmd_vel);
+             }
         }
     }
-    cmd_vel_pub.publish(cmd_vel);
+  }
 }
-
 
 };
 
