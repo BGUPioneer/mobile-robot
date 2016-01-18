@@ -59,7 +59,6 @@ class ImageConverter
     double age;                    //from Open_PTrack trackers
     double height;                 //from Open_PTrack trackers
     double xc;                     //center of the BBC
-    double yc;                     //1/3 upper of the BBC
     float depth;                   //pixel depth value at xc,yc
     float personDepth;             //distance*1000
 
@@ -132,7 +131,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)     //working on the d
 
 
     xc=(xmin+xmax)/2;                        //center of the BBC
-    yc=ymin+(ymax-ymin)/3;                   //1/3 upper of the BBC
 //    depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
     personDepth=distance*1000;               //to avoid an error from calculate the depth only from one pixel, it's better to calculate from the all distance from the person and multipile by 1000 to get milimeters
     depth=personDepth*255/pow(2,16);         //to normalize to 255
@@ -162,7 +160,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)     //working on the d
     bool RightWall= false;              //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
     int countRightWall= 0;
 
-    if ((age>AgeThreshold) && (confidence>ConfidenceTheshold) && (height>HeightTheshold) && height<HeightMaxTheshold){
 
    //left
         for (short int i=xmin-marginAdd;i<xc-5;i++){                       //over each colom from the left with margin up to the center minus 5
@@ -220,7 +217,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)     //working on the d
         else {ROS_INFO("RightOcclusions: false %d", countRight);           //else there is no occlusions
     //    ROS_INFO("depth: %f", depth);
         }
-}
+
 
   //publish the boolians variables
     bool_msg.bigLeft=bigLeftOcclusions;

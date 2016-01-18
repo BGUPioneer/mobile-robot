@@ -23,7 +23,12 @@
 #include <pcl/conversions.h>
 #include <pcl_ros/transforms.h>
 
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+
 #define PI 3.14159265
+
 
 //ros::Publisher cmd_vel_pub;
 geometry_msgs::Twist cmd_vel;
@@ -38,12 +43,14 @@ class kinect2_pan_laser
     ros::Subscriber sub5;
     ros::Subscriber sub6;
 //    ros::Subscriber sub7;
+    ros::Subscriber sub8;
+
     ros::Publisher cmd_vel_pub;
 
          double KpAngle=0.5;
-         double KpDistance=0.5;
-         double DistanceTarget=1.2;
-         double MaxSpeed=1.2;
+         double KpDistance=0.2;
+         double DistanceTarget=2.0;
+         double MaxSpeed=0.5;
          double min=1;
          double xp=0;
          double yp=0;
@@ -57,6 +64,20 @@ class kinect2_pan_laser
          double AngleSmallError=0;
          double xLaserPerson;
          double yLaserPerson;
+         double linearspeedLaser;
+         double DistanceErrorLaser;
+         double DistanceErrorKinect;
+         double linearspeedKinect;
+         double xRobot;
+         double yRobot;
+         double orientationRobot;
+         double xPath;
+         double yPath;
+         double distanceKinect;
+         double xFollow;
+         double yFollow;
+         double AngleErrorFollow;
+         double DistanceErrorFollow;
          double followingAngle=0;  //15 deg= 0.2618 ,30 deg= 0.5236 rad, 60 deg= 1.0472 rad
          bool kinectLaserMatch=false;
          int nbOfTracksKinect;
@@ -68,6 +89,8 @@ class kinect2_pan_laser
          bool WallRight;
          bool laser_obstacle_flag;
          double laser_angular_velocity=0;
+         std::vector<double> XpathPoints;
+         std::vector<double> YpathPoints;
 
 public:
       kinect2_pan_laser()
@@ -80,7 +103,11 @@ public:
          sub5= n.subscribe("/occlusions/sideOcclusions", 10, &kinect2_pan_laser::occlusionKinectCallback, this);
          sub6= n.subscribe("/obstacles/laserObstacles", 10, &kinect2_pan_laser::LaserObstaclesCallback, this);
  //        sub7= n.subscribe("/tracker/history", 10, &kinect2_pan_laser::historyTrackCallback, this);
+         sub8= n.subscribe("/RosAria/pose", 10, &kinect2_pan_laser::poseCallback, this);
+
          cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
+
+
       }
 
   //    void historyTrackCallback(const sensor_msgs::PointCloud2ConstPtr& msg){
@@ -100,6 +127,18 @@ public:
 */
  //        }
 
+void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
+{
+  xRobot=msg->pose.pose.position.x;
+  yRobot=msg->pose.pose.position.y;
+//  orientationRobot=msg->pose.pose.orientation.z;
+  tf::Pose pose;
+  tf::poseMsgToTF(msg->pose.pose, pose);
+  orientationRobot= tf::getYaw(pose.getRotation());  //get radiand rotation (0 front, 3.14 back, left positive, right negative)
+  ROS_INFO("xrobot: %f", xRobot);
+  ROS_INFO("yrobot: %f", yRobot);
+  ROS_INFO("orientationRobot: %f", PI-orientationRobot);
+}
 
 void occlusionKinectCallback(const occlusions::sideOcclusions::ConstPtr& msg)
 {
@@ -159,6 +198,110 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        //Calculate angle error
        double AngleErrorLaser=atan2(yLaserPerson,xLaserPerson);
        //Calculate distance error
+       DistanceErrorLaser=sqrt(pow(xLaserPerson,2)+pow(yLaserPerson,2));
+
+       xPath= xRobot+cos(orientationRobot+AngleErrorLaser)*DistanceErrorLaser;
+       yPath= yRobot+sin(orientationRobot+AngleErrorLaser)*DistanceErrorLaser;
+       ROS_INFO("xPath: %f", xPath);
+       ROS_INFO("yPath: %f", yPath);
+
+       XpathPoints.insert(XpathPoints.begin(),xPath);
+       YpathPoints.insert(YpathPoints.begin(),yPath);
+       ROS_INFO("size: %d", XpathPoints.size());
+
+       if (XpathPoints.size()>31){
+       xFollow=XpathPoints.at(30);
+       yFollow=YpathPoints.at(30);
+
+       ROS_INFO("xFollow: %f", xFollow);
+       ROS_INFO("yFollow: %f", yFollow);
+
+
+       XpathPoints.pop_back();
+       YpathPoints.pop_back();
+
+
+       if(!laser_obstacle_flag){
+           AngleErrorFollow=PI-atan2(yFollow-yRobot,(xFollow-xRobot))-PI+orientationRobot;
+           if(abs(AngleErrorFollow)>PI){
+               if(AngleErrorFollow<0){AngleErrorFollow=AngleErrorFollow+2*PI;}
+               else{AngleErrorFollow=AngleErrorFollow-2*PI;}
+           }
+
+           ROS_INFO("angle: %f", PI-atan2(yFollow-yRobot,(xFollow-xRobot)));
+           ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
+
+
+       cmd_vel.angular.z =-AngleErrorFollow*KpAngle;
+
+       DistanceErrorFollow=sqrt(pow(xFollow-xRobot,2)+pow(yFollow-yRobot,2));
+       if (DistanceErrorLaser>DistanceTarget){ linearspeedLaser=(DistanceErrorFollow-DistanceTarget)*KpDistance;}
+       else{linearspeedLaser=0;}
+       ROS_INFO("DistanceErrorLaser: %f", DistanceErrorLaser);
+
+       if (linearspeedLaser>MaxSpeed)
+       {
+           linearspeedLaser=MaxSpeed;
+       }
+
+       if (linearspeedLaser<0){
+           linearspeedLaser=0;
+       }
+        cmd_vel.linear.x = linearspeedLaser;
+
+       }
+/*
+       if(!laser_obstacle_flag){
+           AngleErrorFollow=PI-atan2(yFollow-yRobot,abs(xFollow-xRobot))-PI+orientationRobot;
+           if(AngleErrorFollow>2*PI){AngleErrorFollow-2*PI;}
+
+           ROS_INFO("angle: %f", PI-atan2(yFollow-yRobot,abs(xFollow-xRobot)));
+
+       cmd_vel.angular.z =-AngleErrorFollow*KpAngle;
+
+       DistanceErrorFollow=sqrt(pow(xFollow-xRobot,2)+pow(yFollow-yRobot,2));
+       if (DistanceErrorLaser>DistanceTarget){ linearspeedLaser=(DistanceErrorFollow-DistanceTarget)*KpDistance;}
+       else{linearspeedLaser=0;}
+       ROS_INFO("DistanceErrorLaser: %f", DistanceErrorLaser);
+
+       if (linearspeedLaser>MaxSpeed)
+       {
+           linearspeedLaser=MaxSpeed;
+       }
+
+       if (linearspeedLaser<0){
+           linearspeedLaser=0;
+       }
+        cmd_vel.linear.x = linearspeedLaser;
+
+       }
+       */
+        }
+       }
+     }
+
+   cmd_vel_pub.publish(cmd_vel);
+}
+
+/*
+void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
+{
+    cmd_vel.linear.x = 0.0;
+    cmd_vel.angular.z = 0.0;
+
+   int nbOfTracksLaser=msg->people.size();
+
+   if (nbOfTracksLaser>0) {
+       //Extract coordinates of first detected person
+       xLaserPerson=msg->people[0].pos.x;
+       yLaserPerson=msg->people[0].pos.y;
+       ROS_INFO("xLaser: %f", xLaserPerson);
+       ROS_INFO("yLaser: %f", yLaserPerson);
+
+        if (nbOfTracksKinect==0) {
+       //Calculate angle error
+       double AngleErrorLaser=atan2(yLaserPerson,xLaserPerson);
+       //Calculate distance error
        double DistanceErrorLaser=sqrt(pow(xLaserPerson,2)+pow(yLaserPerson,2));
 
        if(!laser_obstacle_flag){
@@ -180,12 +323,137 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
 
    cmd_vel_pub.publish(cmd_vel);
 }
+*/
 
 void panCallback(const std_msgs::Float32::ConstPtr& msg)
 {
     AngleErrorPan=msg->data;
 }
 
+void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
+{
+    bool validTrack=false;
+
+    //Initialize the twist
+    cmd_vel.linear.x = 0.0;
+    cmd_vel.angular.z = 0.0;
+
+    //Get the number of tracks in the TrackArray
+    nbOfTracksKinect=msg->tracks.size();
+
+    //If at least 1 track, proceed
+    if (nbOfTracksKinect>0) {
+        //looping throught the TrackArray
+        for(int i=0;i<nbOfTracksKinect && !validTrack;i++){
+            //oldest track which is older than the age threshold and above the confidence threshold
+            if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
+
+                //Calculate angle error
+            //    float xperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(cos(AngleErrorPan));
+            //    float yperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(sin(AngleErrorPan));
+                distanceKinect=msg->tracks[i].distance;
+                float xperson=((distanceKinect)*cos(AngleSmallError+AngleErrorPan));
+                float yperson=((distanceKinect)*sin(AngleSmallError+AngleErrorPan));
+                double AngleError=atan2(yperson,xperson);
+                xPath= xRobot+cos(orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
+                yPath= yRobot+sin(orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
+                ROS_INFO("xPath: %f", xPath);
+                ROS_INFO("yPath: %f", yPath);
+
+                XpathPoints.insert(XpathPoints.begin(),xPath);
+                YpathPoints.insert(YpathPoints.begin(),yPath);
+                ROS_INFO("size: %d", XpathPoints.size());
+
+                if (XpathPoints.size()>91){
+                xFollow=XpathPoints.at(90);
+                yFollow=YpathPoints.at(90);
+
+                ROS_INFO("xFollow: %f", xFollow);
+                ROS_INFO("yFollow: %f", yFollow);
+
+
+                XpathPoints.pop_back();
+                YpathPoints.pop_back();
+
+                double error= sqrt(pow(xperson-xLaserPerson,2)+pow(yperson-yLaserPerson,2));  //calculate the x and y error between the kinect and the laser
+                ROS_INFO("error: %f", error);
+
+                if (error<0.2){
+                    kinectLaserMatch=true;
+                    ROS_INFO("match: %d", kinectLaserMatch);
+                }
+
+                //Calculate distance error
+                DistanceErrorKinect=msg->tracks[i].distance-DistanceTarget;
+
+                //print to the console
+/*         ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
+                ROS_INFO("Height: %f", msg->tracks[i].height);
+                ROS_INFO("distance: %f", msg->tracks[i].distance);
+                ROS_INFO("age: %f", msg->tracks[i].age);
+                ROS_INFO("AngleError: %f", AngleError);
+                ROS_INFO("AngleErrorPan: %f", (AngleErrorPan*180)/ PI);
+*/
+                ROS_INFO("xperson: %f", xperson);
+                ROS_INFO("yperson: %f", yperson);
+
+                //Set command Twist
+          //      if(smallError==false ){  //to reduce vibration around 0 angle of the kinect view, and 0 robot angle  // && abs(AngleErrorPan)<0.05
+          //    cmd_vel.angular.z = (AngleErrorPan+followingAngle)*KpAngle;
+
+
+                if (!laser_obstacle_flag){
+                    AngleErrorFollow=PI-atan2(yFollow-yRobot,(xFollow-xRobot))-PI+orientationRobot;
+                    if(abs(AngleErrorFollow)>PI){
+                        if(AngleErrorFollow<0){AngleErrorFollow=AngleErrorFollow+2*PI;}
+                        else{AngleErrorFollow=AngleErrorFollow-2*PI;}
+                    }
+
+                    ROS_INFO("angle: %f", PI-atan2(yFollow-yRobot,(xFollow-xRobot)));
+                    ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
+
+
+                cmd_vel.angular.z =-AngleErrorFollow*KpAngle;
+
+                DistanceErrorFollow=sqrt(pow(xFollow-xRobot,2)+pow(yFollow-yRobot,2));
+                if (DistanceErrorKinect>0.05){ linearspeedKinect=(DistanceErrorFollow-DistanceTarget)*KpDistance;}
+                else{linearspeedKinect=0;}
+                ROS_INFO("DistanceErrorLaser: %f", DistanceErrorLaser);
+
+                if (linearspeedKinect>MaxSpeed)
+                {
+                    linearspeedKinect=MaxSpeed;
+                }
+
+                if (linearspeedKinect<0 || DistanceErrorKinect<0.05 ){
+                    linearspeedKinect=0;
+                }
+                 cmd_vel.linear.x = linearspeedKinect;
+
+                }
+                }
+
+                //Stop for loop
+                validTrack=true;
+            }
+            else{
+ /*               ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
+                ROS_INFO("Height: %f", 0.0);
+                ROS_INFO("distance: %f", 0.0);
+                ROS_INFO("age: %f", 0.0);
+                ROS_INFO("AngleError: %f", 90.0);
+                ROS_INFO("AngleErrorPan: %f", 180.0);
+                ROS_INFO("xperson: %f", 0.0);
+                ROS_INFO("yperson: %f", 0.0);
+ */
+            }
+        }
+    }
+    cmd_vel_pub.publish(cmd_vel);
+}
+
+
+/*
 void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 {
     bool validTrack=false;
@@ -223,13 +491,13 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 double DistanceError=msg->tracks[i].distance-DistanceTarget;
 
                 //print to the console
-/*         ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
+         ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
                 ROS_INFO("Height: %f", msg->tracks[i].height);
                 ROS_INFO("distance: %f", msg->tracks[i].distance);
                 ROS_INFO("age: %f", msg->tracks[i].age);
                 ROS_INFO("AngleError: %f", AngleError);
                 ROS_INFO("AngleErrorPan: %f", (AngleErrorPan*180)/ PI);
-*/
+
                 ROS_INFO("xperson: %f", xperson);
                 ROS_INFO("yperson: %f", yperson);
 
@@ -257,7 +525,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 validTrack=true;
             }
             else{
- /*               ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
+                ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
                 ROS_INFO("Height: %f", 0.0);
                 ROS_INFO("distance: %f", 0.0);
                 ROS_INFO("age: %f", 0.0);
@@ -265,13 +533,13 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 ROS_INFO("AngleErrorPan: %f", 180.0);
                 ROS_INFO("xperson: %f", 0.0);
                 ROS_INFO("yperson: %f", 0.0);
- */
+
             }
         }
     }
     cmd_vel_pub.publish(cmd_vel);
 }
-
+*/
 
 };
 

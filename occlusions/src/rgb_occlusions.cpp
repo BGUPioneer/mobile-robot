@@ -64,8 +64,6 @@ class ImageConverter
     double rgbymin=0;                   //bottom-left of the BBC from the MONO image
     double rgbxmax=0;                   //top-right of the BBC from the MONO image
     double rgbymax=0;                   //bottom-right of the BBC from the MONO image
-    double xc;                          //the center of the box in x axis from the MONO image
-    double yc;                          //the 1/3 upper body from the MONO umage
     double xcBox;                       //the center of the box in the ROI
 
     bool validTrack;                    //good track
@@ -140,9 +138,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)             //working 
        rgbymin=ymin;                                                 //bottom-left of the BBC from the MONO image
        rgbymax=rgbymin+(ymax-ymin)*1.3;                              //bottom-right of the BBC from the MONO image with more for the legs but not the ground
 
-
-    xc=(rgbxmin+rgbxmax)/2;                                          //the center of the box in x axis at the MONO image
-    yc=ymin+(rgbymax-rgbymin)/3;                                     //the 1/3 upper body from the MONO umage
     ROS_INFO("xcenter: %f", xcenter);
 
 
