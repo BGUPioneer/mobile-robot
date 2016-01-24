@@ -16,6 +16,7 @@
 #include "std_srvs/Empty.h"
 #include <obstacles/laserObstacles.h>
 #include <people_msgs/PositionMeasurementArray.h>
+#include "opt_msgs/TrackArray.h"
 
 //geometry_msgs::Twist zero_twist;
 obstacles::laserObstacles ob_msg;
@@ -28,6 +29,8 @@ class LaserObstacles
     ros::Subscriber cmdVel = n.subscribe("/cmd_vel", 10, &LaserObstacles::velocityCallback, this);
     ros::Subscriber sub_laser = n.subscribe("/RosAria/S3Series_1_pointcloud", 10, &LaserObstacles::LaserCallback,this);  //get the laser point
     ros::Subscriber sub_people= n.subscribe("/people_tracker_measurements", 10, &LaserObstacles::LaserLegsCallback, this);  //get the leg detector point of the person
+    ros::Subscriber sub_people_kinect= n.subscribe("/tracker/tracks", 10, &LaserObstacles::KinectCallback, this);  //get the kinect point of the person
+
 
     ros::Publisher pub=(n.advertise<obstacles::laserObstacles> ("/obstacles/laserObstacles",10));
 
@@ -38,6 +41,8 @@ class LaserObstacles
     double linearVelocity;
     double xLaserPerson;
     double yLaserPerson;
+    double xKinectPerson;
+    double yKinectPerson;
     double radiusPerson=0.7;
 
 
@@ -47,9 +52,22 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
 
     if (nbOfTracksLaser>0) {
         for(int i=0; i<nbOfTracksLaser;i++){
-        //Extract coordinates of first detected person
+        //Extract coordinates of first detected person from leg detector (laser)
         xLaserPerson=msg->people[i].pos.x;
         yLaserPerson=msg->people[i].pos.y;
+        }
+    }
+}
+
+void KinectCallback(const opt_msgs::TrackArray::ConstPtr& msg)
+{
+    int nbOfTracksKinect=msg->tracks.size();
+
+    if (nbOfTracksKinect>0) {
+        for(int i=0; i<nbOfTracksKinect;i++){
+        //Extract coordinates of first detected person from the Kinect
+        xKinectPerson=msg->tracks[i].x;
+        yKinectPerson=msg->tracks[i].y;
         }
     }
 }
@@ -70,8 +88,8 @@ void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
 
   for (int i=0; i<pc_out.points.size() ;i++)
   {
-      //an obstacle inside the DistanceCheck and more than radiusPerson from a detected legs
-      if ((pc_out.points[i].x < DistanceSlowDownCheck) && (pc_out.points[i].x >-abs(angularVelocity))  && (sqrt(pow(pc_out.points[i].x-xLaserPerson,2)+pow(pc_out.points[i].y-yLaserPerson,2))>radiusPerson))
+      //an obstacle inside the DistanceCheck and more than radiusPerson from a detected legs or detected person from the Kinect
+      if ((pc_out.points[i].x < DistanceSlowDownCheck) && (pc_out.points[i].x >-abs(angularVelocity))  && ((sqrt(pow(pc_out.points[i].x-xLaserPerson,2)+pow(pc_out.points[i].y-yLaserPerson,2))>radiusPerson) || (sqrt(pow(pc_out.points[i].x-xKinectPerson,2)+pow(pc_out.points[i].y-yKinectPerson,2))>radiusPerson)))
       {
           //2 conditions: 1. y smaller than positive WidthCheck multipile the power of the turn of the robot; 2.y bigger than negative WidthCheck multipile the power of the turn of the robot;
           if ((pc_out.points[i].y < WidthCheck*(1+angularVelocity)) && (pc_out.points[i].y > -WidthCheck*(1-angularVelocity))){

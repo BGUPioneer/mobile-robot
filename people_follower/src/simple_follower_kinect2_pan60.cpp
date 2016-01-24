@@ -14,7 +14,7 @@
 #define PI 3.14159265
 
 double KpAngle=0.3;
-double KpDistance=1.2;
+double KpDistance=0.8;
 double DistanceTarget=0.8;
 double MaxSpeed=0.8;
 ros::Publisher cmd_vel_pub;
