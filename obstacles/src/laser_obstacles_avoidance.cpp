@@ -5,6 +5,7 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Float64.h"
+#include "std_msgs/Float32.h"
 #include "std_msgs/Bool.h"
 #include "rosaria/BumperState.h"
 #include "geometry_msgs/Twist.h"
@@ -30,13 +31,15 @@ class LaserObstacles
     ros::Subscriber sub_laser = n.subscribe("/RosAria/S3Series_1_pointcloud", 10, &LaserObstacles::LaserCallback,this);  //get the laser point
     ros::Subscriber sub_people= n.subscribe("/people_tracker_measurements", 10, &LaserObstacles::LaserLegsCallback, this);  //get the leg detector point of the person
     ros::Subscriber sub_people_kinect= n.subscribe("/tracker/tracks", 10, &LaserObstacles::KinectCallback, this);  //get the kinect point of the person
+    ros::Subscriber sub2= n.subscribe("/Pan_Feedback", 10, &LaserObstacles::panCallback, this);
+    ros::Subscriber sub3= n.subscribe("/Pan_Error_Command", 10, &LaserObstacles::smallErrorCallback, this);
 
 
     ros::Publisher pub=(n.advertise<obstacles::laserObstacles> ("/obstacles/laserObstacles",10));
 
     double DistanceCheck=1.5;  //in front of the robot
     double WidthCheck= 0.5;  //for each side
-    double DistanceSlowDownCheck= 2.5;  //for each side
+    double DistanceSlowDownCheck= 1.5;  //for each side
     double angularVelocity;
     double linearVelocity;
     double xLaserPerson;
@@ -44,7 +47,23 @@ class LaserObstacles
     double xKinectPerson;
     double yKinectPerson;
     double radiusPerson=0.7;
+    double AngleErrorPan=0;
+    bool smallError=false;
+    double smallErrorThreshold=0.01;
+    double AngleSmallError=0;
 
+
+void smallErrorCallback(const std_msgs::Float32::ConstPtr& msg)
+{
+     double AngleSmallError=msg->data;
+     if ((abs(AngleSmallError)<smallErrorThreshold)&& (abs(AngleErrorPan)<0.01)){smallError=true;}
+     else {smallError=false;}
+}
+
+void panCallback(const std_msgs::Float32::ConstPtr& msg)
+{
+    AngleErrorPan=msg->data;
+}
 
 void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 {
@@ -55,7 +74,12 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
         //Extract coordinates of first detected person from leg detector (laser)
         xLaserPerson=msg->people[i].pos.x;
         yLaserPerson=msg->people[i].pos.y;
+        ROS_INFO("xLaserPerson :%f", xLaserPerson);
         }
+    }
+    else{
+        xLaserPerson=xKinectPerson;
+        yLaserPerson=yKinectPerson;
     }
 }
 
@@ -66,8 +90,10 @@ void KinectCallback(const opt_msgs::TrackArray::ConstPtr& msg)
     if (nbOfTracksKinect>0) {
         for(int i=0; i<nbOfTracksKinect;i++){
         //Extract coordinates of first detected person from the Kinect
-        xKinectPerson=msg->tracks[i].x;
-        yKinectPerson=msg->tracks[i].y;
+        xKinectPerson=((msg->tracks[i].distance)*cos(AngleSmallError+AngleErrorPan));
+        yKinectPerson=((msg->tracks[i].distance)*sin(AngleSmallError+AngleErrorPan));
+        ROS_INFO("xKinectPerson :%f", xKinectPerson);
+
         }
     }
 }
@@ -89,12 +115,15 @@ void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
   for (int i=0; i<pc_out.points.size() ;i++)
   {
       //an obstacle inside the DistanceCheck and more than radiusPerson from a detected legs or detected person from the Kinect
-      if ((pc_out.points[i].x < DistanceSlowDownCheck) && (pc_out.points[i].x >-abs(angularVelocity))  && ((sqrt(pow(pc_out.points[i].x-xLaserPerson,2)+pow(pc_out.points[i].y-yLaserPerson,2))>radiusPerson) || (sqrt(pow(pc_out.points[i].x-xKinectPerson,2)+pow(pc_out.points[i].y-yKinectPerson,2))>radiusPerson)))
+      if ((pc_out.points[i].x < DistanceSlowDownCheck) && (pc_out.points[i].x >-abs(angularVelocity))  &&
+              ( ((sqrt(pow(pc_out.points[i].x-xLaserPerson,2)+pow(pc_out.points[i].y-yLaserPerson,2))>radiusPerson) && (xLaserPerson!=0.0))||
+               ((sqrt(pow(pc_out.points[i].x-xKinectPerson,2)+pow(pc_out.points[i].y-yKinectPerson,2))>radiusPerson) && (xKinectPerson!=0.0)) ))
       {
           //2 conditions: 1. y smaller than positive WidthCheck multipile the power of the turn of the robot; 2.y bigger than negative WidthCheck multipile the power of the turn of the robot;
           if ((pc_out.points[i].y < WidthCheck*(1+angularVelocity)) && (pc_out.points[i].y > -WidthCheck*(1-angularVelocity))){
           ROS_INFO("angularVelocity :%f", angularVelocity);
           ROS_INFO("Obstacle detected by laser at : x:%f y:%f", pc_out.points[i].x , pc_out.points[i].y);
+          ROS_INFO("laserdistance:%f",(sqrt(pow(pc_out.points[i].x-xLaserPerson,2)+pow(pc_out.points[i].y-yLaserPerson,2))));
 
             double pointDistance=sqrt(pow(pc_out.points[i].x,2)+pow(pc_out.points[i].y,2));
            //to get the closet obstacle
