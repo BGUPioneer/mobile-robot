@@ -48,9 +48,9 @@ class kinect2_pan_laser
 
 
          double KpAngle=0.5;
-         double KpDistance=0.3;
+         double KpDistance=0.2;
          double DistanceTarget=1.2;
-         double MaxSpeed=0.8;
+         double MaxSpeed=0.5;
          double min=1;
          double xp=0;
          double yp=0;
@@ -67,7 +67,7 @@ class kinect2_pan_laser
          double yLaserPerson;
          double followingAngle=0;  //15 deg= 0.2618 ,30 deg= 0.5236 rad, 60 deg= 1.0472 rad
          bool kinectLaserMatch=false;
-         int nbOfTracksKinect;
+         int nbOfTracksKinect=0;
          double xRobot;
          double yRobot;
          double orientationRobot;
@@ -87,13 +87,13 @@ public:
       kinect2_pan_laser()
 
       {
-         sub1= n.subscribe("/tracker/tracks", 10, &kinect2_pan_laser::personCallback, this);
-         sub2= n.subscribe("/Pan_Feedback", 10, &kinect2_pan_laser::panCallback, this);
-         sub3= n.subscribe("/Pan_Error_Command", 10, &kinect2_pan_laser::smallErrorCallback, this);
-         sub4= n.subscribe("/people_tracker_measurements", 10, &kinect2_pan_laser::LaserLegsCallback, this);
-         sub5= n.subscribe("/occlusions/sideOcclusions", 10, &kinect2_pan_laser::occlusionKinectCallback, this);
-         sub6= n.subscribe("/obstacles/laserObstacles", 10, &kinect2_pan_laser::LaserObstaclesCallback, this);
-         sub7= n.subscribe("/RosAria/pose", 10, &kinect2_pan_laser::poseCallback, this);
+         sub1= n.subscribe("/tracker/tracks", 10, &kinect2_pan_laser::personCallback, this);                      //the kinect parameters of the person
+         sub2= n.subscribe("/Pan_Feedback", 10, &kinect2_pan_laser::panCallback, this);                           //the angle of the pan from the center of the robot
+         sub3= n.subscribe("/Pan_Error_Command", 10, &kinect2_pan_laser::smallErrorCallback, this);               //the angle of the person from the center of the kinect
+         sub4= n.subscribe("/people_tracker_measurements", 10, &kinect2_pan_laser::LaserLegsCallback, this);      //the laser leg detector parameters of the person
+         sub5= n.subscribe("/occlusions/sideOcclusions", 10, &kinect2_pan_laser::occlusionKinectCallback, this);  //occlusions from depth or rgb
+         sub6= n.subscribe("/obstacles/laserObstacles", 10, &kinect2_pan_laser::LaserObstaclesCallback, this);    //obstacles from laser
+         sub7= n.subscribe("/RosAria/pose", 10, &kinect2_pan_laser::poseCallback, this);                          //position of the robot in the world
          cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
          vis_pub1 = ros::Publisher(n.advertise<visualization_msgs::Marker>( "/visualization_marker_array", 1 ));  //for laser legs (green)
          vis_pub2 = ros::Publisher(n.advertise<visualization_msgs::Marker>( "/visualization_marker_array", 1 ));  //for Kinect person detected (blue)
@@ -114,7 +114,7 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
 
     //////////////////////////////////marker
             visualization_msgs::Marker marker;
-            marker.header.frame_id = "base_link";
+            marker.header.frame_id = "odom";
             marker.header.stamp = ros::Time();
             marker.ns = "robotPose";
             marker.id = 0;
@@ -242,42 +242,6 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
         marker.color.g = 1.0;
         marker.color.b = 0.0;
         vis_pub1.publish( marker );
-
-/*
-        visualization_msgs::Marker points, line_strip;
-        points.header.frame_id = line_strip.header.frame_id = "base_link";
-        points.header.stamp = line_strip.header.stamp = ros::Time::now();
-        points.ns = line_strip.ns = "points_and_lines";
-        points.action = line_strip.action = visualization_msgs::Marker::ADD;
-        points.pose.orientation.w = line_strip.pose.orientation.w = 1.0;
-        points.id = 0;
-        line_strip.id = 1;
-        points.type = visualization_msgs::Marker::POINTS;
-        line_strip.type = visualization_msgs::Marker::LINE_STRIP;
-        // POINTS markers use x and y scale for width/height respectively
-        points.scale.x = 0.2;
-        points.scale.y = 0.2;
-        // LINE_STRIP/LINE_LIST markers use only the x component of scale, for the line width
-        line_strip.scale.x = 0.1;
-        // Points are green
-        points.color.g = 1.0f;
-        points.color.a = 1.0;
-        // Line strip is blue
-        line_strip.color.b = 1.0;
-        line_strip.color.a = 1.0;
-        // Create the vertices for the points and lines
-            for (uint32_t i = 0; i < 100; ++i)
-            {
-              geometry_msgs::Point p;
-              p.x = xLaserPerson;
-              p.y = yLaserPerson;
-              p.z = 0.0;
-              points.points.push_back(p);
-              line_strip.points.push_back(p);
-            }
-         marker_pub.publish(points);
-         marker_pub.publish(line_strip);
-*/
 ////////////////////////
 
   }

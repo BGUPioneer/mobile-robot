@@ -15,7 +15,8 @@
 #include "people_msgs/PositionMeasurement.h"
 #include <occlusions/sideOcclusions.h>
 #include <obstacles/laserObstacles.h>
-
+#include "visualization_msgs/Marker.h"
+#include "visualization_msgs/MarkerArray.h"
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
@@ -45,11 +46,14 @@ class kinect2_pan_laser
 //    ros::Subscriber sub7;
     ros::Subscriber sub8;
 
+    ros::Publisher vis_pub1;
+    ros::Publisher vis_pub2;
+    ros::Publisher vis_pub3;
     ros::Publisher cmd_vel_pub;
 
          double KpAngle=0.5;
          double KpDistance=0.2;
-         double DistanceTarget=2.0;
+         double DistanceTarget=1.2;
          double MaxSpeed=0.5;
          double min=1;
          double xp=0;
@@ -71,6 +75,9 @@ class kinect2_pan_laser
          double xRobot;
          double yRobot;
          double orientationRobot;
+         double xperson;
+         double yperson;
+         double AngleError;
          double xPath;
          double yPath;
          double distanceKinect;
@@ -80,7 +87,7 @@ class kinect2_pan_laser
          double DistanceErrorFollow;
          double followingAngle=0;  //15 deg= 0.2618 ,30 deg= 0.5236 rad, 60 deg= 1.0472 rad
          bool kinectLaserMatch=false;
-         int nbOfTracksKinect;
+         int nbOfTracksKinect=0;
          bool BigLeft;
          bool SmallLeft;
          bool WallLeft;
@@ -88,7 +95,9 @@ class kinect2_pan_laser
          bool SmallRight;
          bool WallRight;
          bool laser_obstacle_flag;
+         bool slow_down_flag;
          double laser_angular_velocity=0;
+         double laser_linear_velocity=0;
          std::vector<double> XpathPoints;
          std::vector<double> YpathPoints;
 
@@ -96,14 +105,17 @@ public:
       kinect2_pan_laser()
 
       {
-         sub1= n.subscribe("/tracker/tracks", 10, &kinect2_pan_laser::personCallback, this);
-         sub2= n.subscribe("/Pan_Feedback", 10, &kinect2_pan_laser::panCallback, this);
-         sub3= n.subscribe("/Pan_Error_Command", 10, &kinect2_pan_laser::smallErrorCallback, this);
-         sub4= n.subscribe("/people_tracker_measurements", 10, &kinect2_pan_laser::LaserLegsCallback, this);
-         sub5= n.subscribe("/occlusions/sideOcclusions", 10, &kinect2_pan_laser::occlusionKinectCallback, this);
-         sub6= n.subscribe("/obstacles/laserObstacles", 10, &kinect2_pan_laser::LaserObstaclesCallback, this);
+         sub1= n.subscribe("/tracker/tracks", 10, &kinect2_pan_laser::personCallback, this);                      //the kinect parameters of the person
+         sub2= n.subscribe("/Pan_Feedback", 10, &kinect2_pan_laser::panCallback, this);                           //the angle of the pan from the center of the robot
+         sub3= n.subscribe("/Pan_Error_Command", 10, &kinect2_pan_laser::smallErrorCallback, this);               //the angle of the person from the center of the kinect
+         sub4= n.subscribe("/people_tracker_measurements", 10, &kinect2_pan_laser::LaserLegsCallback, this);      //the laser leg detector parameters of the person
+         sub5= n.subscribe("/occlusions/sideOcclusions", 10, &kinect2_pan_laser::occlusionKinectCallback, this);  //occlusions from depth or rgb
+         sub6= n.subscribe("/obstacles/laserObstacles", 10, &kinect2_pan_laser::LaserObstaclesCallback, this);    //obstacles from laser
  //        sub7= n.subscribe("/tracker/history", 10, &kinect2_pan_laser::historyTrackCallback, this);
-         sub8= n.subscribe("/RosAria/pose", 10, &kinect2_pan_laser::poseCallback, this);
+         sub8= n.subscribe("/RosAria/pose", 10, &kinect2_pan_laser::poseCallback, this);                          //position of the robot in the world
+         vis_pub1 = ros::Publisher(n.advertise<visualization_msgs::Marker>( "/visualization_marker_array", 1 ));  //for laser legs (green)
+         vis_pub2 = ros::Publisher(n.advertise<visualization_msgs::Marker>( "/visualization_marker_array", 1 ));  //for Kinect person detected (blue)
+         vis_pub3 = ros::Publisher(n.advertise<visualization_msgs::Marker>( "/visualization_marker_array", 1 ));  //for robot position (red), when using rviz set the fixed frame to odom
 
          cmd_vel_pub = ros::Publisher(n.advertise<geometry_msgs::Twist> ("follower/cmd_vel", 2));
 
@@ -123,6 +135,32 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
   ROS_INFO("xrobot: %f", xRobot);
   ROS_INFO("yrobot: %f", yRobot);
   ROS_INFO("orientationRobot: %f", PI-orientationRobot);
+
+  //////////////////////////////////marker
+          visualization_msgs::Marker marker;
+          marker.header.frame_id = "odom";
+          marker.header.stamp = ros::Time();
+          marker.ns = "robotPose";
+          marker.id = 0;
+          marker.type = visualization_msgs::Marker::SPHERE;
+          marker.action = visualization_msgs::Marker::ADD;
+          marker.pose.position.x = xRobot;
+          marker.pose.position.y = yRobot;
+          marker.pose.position.z = 0;
+          marker.pose.orientation.x = 0.0;
+          marker.pose.orientation.y = 0.0;
+          marker.pose.orientation.z = 0.0;
+       //   marker.pose.orientation.w = orientationRobot;
+          marker.pose.orientation.w = 1.0;
+          marker.scale.x = 0.3;
+          marker.scale.y = 0.3;
+          marker.scale.z = 0.1;
+          marker.color.a = 1.0; // Don't forget to set the alpha!
+          marker.color.r = 1.0;
+          marker.color.g = 0.0;
+          marker.color.b = 0.0;
+          vis_pub3.publish( marker );
+  ////////////////////////
 }
 
 void occlusionKinectCallback(const occlusions::sideOcclusions::ConstPtr& msg)
@@ -149,11 +187,13 @@ void LaserObstaclesCallback(const obstacles::laserObstacles::ConstPtr& msg)
 {
     laser_obstacle_flag=msg->detect_obstacles;
     laser_angular_velocity=msg->angular_velocity;
+    laser_linear_velocity=msg->linear_velocity;
+    slow_down_flag=msg->slow_down;
     ROS_INFO("laser_obstacle_flag: %d", laser_obstacle_flag);
     ROS_INFO("laser_angular_velocity: %f", laser_angular_velocity);
     if (laser_obstacle_flag){
     cmd_vel.angular.z = laser_angular_velocity;  //turn to avoid obstacles
-    cmd_vel.linear.x = 0.2;
+    cmd_vel.linear.x = laser_linear_velocity;
     cmd_vel_pub.publish(cmd_vel);
     }
 }
@@ -169,6 +209,7 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
 {
     cmd_vel.linear.x = 0.0;
     cmd_vel.angular.z = 0.0;
+    double AngleErrorLaser;
 
    int nbOfTracksLaser=msg->people.size();
 
@@ -178,6 +219,8 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        yLaserPerson=msg->people[0].pos.y;
        ROS_INFO("xLaser: %f", xLaserPerson);
        ROS_INFO("yLaser: %f", yLaserPerson);
+       ROS_INFO("nbOfTracksKinect: %d", nbOfTracksKinect);
+
 
         if (nbOfTracksKinect==0) {
        //Calculate angle error
@@ -189,6 +232,7 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        yPath= yRobot+sin(orientationRobot+AngleErrorLaser)*DistanceErrorLaser;
        ROS_INFO("xPath: %f", xPath);
        ROS_INFO("yPath: %f", yPath);
+
 
        XpathPoints.insert(XpathPoints.begin(),xPath);
        YpathPoints.insert(YpathPoints.begin(),yPath);
@@ -237,6 +281,30 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        }
       }
      }
+        //////////////////////////////////marker
+                visualization_msgs::Marker marker;
+                marker.header.frame_id = "base_link";
+                marker.header.stamp = ros::Time();
+                marker.ns = "laser";
+                marker.id = 0;
+                marker.type = visualization_msgs::Marker::SPHERE;
+                marker.action = visualization_msgs::Marker::ADD;
+                marker.pose.position.x = xFollow;
+                marker.pose.position.y = yFollow;
+                marker.pose.position.z = 0;
+                marker.pose.orientation.x = 0.0;
+                marker.pose.orientation.y = 0.0;
+                marker.pose.orientation.z = 0.0;
+                marker.pose.orientation.w = 1.0;
+                marker.scale.x = 0.1;
+                marker.scale.y = 0.1;
+                marker.scale.z = 0.1;
+                marker.color.a = 1.0; // Don't forget to set the alpha!
+                marker.color.r = 0.0;
+                marker.color.g = 1.0;
+                marker.color.b = 0.0;
+                vis_pub1.publish( marker );
+        ////////////////////////
     }
 
    cmd_vel_pub.publish(cmd_vel);
@@ -252,6 +320,9 @@ void panCallback(const std_msgs::Float32::ConstPtr& msg)
 void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 {
     bool validTrack=false;
+    double xperson;
+    double yperson;
+    double AngleErrorKinect;
 
     //Initialize the twist
     cmd_vel.linear.x = 0.0;
@@ -269,16 +340,24 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 
                 //Calculate angle error
                 distanceKinect=msg->tracks[i].distance;
-                float xperson=((distanceKinect)*cos(AngleSmallError+AngleErrorPan));
-                float yperson=((distanceKinect)*sin(AngleSmallError+AngleErrorPan));
-                double AngleError=atan2(yperson,xperson);
-                xPath= xRobot+cos(orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
-                yPath= yRobot+sin(orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
+                xperson=((distanceKinect)*cos(AngleSmallError+AngleErrorPan));
+                yperson=((distanceKinect)*sin(AngleSmallError+AngleErrorPan));
+                AngleErrorKinect=atan2(yperson,xperson);
+
+
+           //     xPath= xRobot-cos(PI-orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
+           //     yPath= yRobot-sin(PI-orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
+                xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*distanceKinect;
+                yPath= yRobot+sin(orientationRobot+AngleErrorKinect)*distanceKinect;
+           //     xPath= xRobot+cos(orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
+           //     yPath= yRobot+sin(orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
                 ROS_INFO("xPath: %f", xPath);
                 ROS_INFO("yPath: %f", yPath);
 
                 XpathPoints.insert(XpathPoints.begin(),xPath);
                 YpathPoints.insert(YpathPoints.begin(),yPath);
+          //      XpathPoints.insert(XpathPoints.begin(),xperson);
+          //      YpathPoints.insert(YpathPoints.begin(),yperson);
                 ROS_INFO("size: %d", XpathPoints.size());
 
                 if (XpathPoints.size()>91){
@@ -321,6 +400,10 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 
                 if (!laser_obstacle_flag){
                     AngleErrorFollow=PI-atan2(yFollow-yRobot,(xFollow-xRobot))-PI+orientationRobot;
+                //    AngleErrorFollow=atan2(yFollow-yRobot,(xFollow-xRobot));
+                //    AngleErrorFollow=atan2(yFollow,xFollow);
+
+
                     if(abs(AngleErrorFollow)>PI){
                         if(AngleErrorFollow<0){AngleErrorFollow=AngleErrorFollow+2*PI;}
                         else{AngleErrorFollow=AngleErrorFollow-2*PI;}
@@ -346,12 +429,14 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                     linearspeedKinect=0;
                 }
                  cmd_vel.linear.x = linearspeedKinect;
+                 //Stop for loop
+                 validTrack=true;
+                 cmd_vel_pub.publish(cmd_vel);
+                }
 
                 }
-                }
 
-                //Stop for loop
-                validTrack=true;
+
             }
             else{
  /*               ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
@@ -364,9 +449,33 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 ROS_INFO("yperson: %f", 0.0);
  */
             }
+            //////////////////////////////////marker
+                    visualization_msgs::Marker marker;
+                    marker.header.frame_id = "base_link";
+                    marker.header.stamp = ros::Time();
+                    marker.ns = "kinect";
+                    marker.id = 0;
+                    marker.type = visualization_msgs::Marker::SPHERE;
+                    marker.action = visualization_msgs::Marker::ADD;
+                    marker.pose.position.x = xFollow;
+                    marker.pose.position.y = yFollow;
+                    marker.pose.position.z = 0;
+                    marker.pose.orientation.x = 0.0;
+                    marker.pose.orientation.y = 0.0;
+                    marker.pose.orientation.z = 0.0;
+                    marker.pose.orientation.w = 1.0;
+                    marker.scale.x = 0.1;
+                    marker.scale.y = 0.1;
+                    marker.scale.z = 0.1;
+                    marker.color.a = 1.0; // Don't forget to set the alpha!
+                    marker.color.r = 0.0;
+                    marker.color.g = 1.0;
+                    marker.color.b = 1.0;
+                    vis_pub2.publish( marker );
+            ////////////////////////
         }
+
     }
-    cmd_vel_pub.publish(cmd_vel);
 }
 
 

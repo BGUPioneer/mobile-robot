@@ -46,7 +46,7 @@ class LaserObstacles
     double yLaserPerson;
     double xKinectPerson;
     double yKinectPerson;
-    double radiusPerson=0.7;
+    double radiusPerson=1.0;
     double AngleErrorPan=0;
     bool smallError=false;
     double smallErrorThreshold=0.01;
@@ -136,7 +136,12 @@ void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
         }
       }
   }
-    if(XclosestObstacle < DistanceCheck){
+ //   if(XclosestObstacle < DistanceCheck){
+
+        if ((XclosestObstacle < DistanceCheck) && (XclosestObstacle >-abs(angularVelocity))  &&
+                ( ((sqrt(pow(XclosestObstacle-xLaserPerson,2)+pow(YclosestObstacle-yLaserPerson,2))>radiusPerson) && (xLaserPerson!=0.0))||
+                 ((sqrt(pow(XclosestObstacle-xKinectPerson,2)+pow(YclosestObstacle-yKinectPerson,2))>radiusPerson) && (xKinectPerson!=0.0)) )){
+
       if(linearVelocity>0.2){linearCommand=0.2;}     //move slow near obstacles
         else {linearCommand=linearVelocity;}
       //if obstacle from the left than turn right (positive angular velocity)
