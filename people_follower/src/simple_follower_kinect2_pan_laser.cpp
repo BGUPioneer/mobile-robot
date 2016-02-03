@@ -93,6 +93,15 @@ class kinect2_pan_laser
          double tempDistance;
          double AngleErrorFollow;
          double count;
+         double AngleErrorLaser;
+         double xperson;
+         double yperson;
+         double AngleErrorKinect;
+         double age;
+         double height;
+         double confidence;
+         double error;
+
          std::vector<double> YpathPoints;
 
 
@@ -122,7 +131,39 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     tf::Pose pose;
     tf::poseMsgToTF(msg->pose.pose, pose);
     orientationRobot= tf::getYaw(pose.getRotation());  //get radiand rotation (0 front, 3.14 back, left positive, right negative)
+//    ROS_INFO("xRobot: %f", xRobot);
+//    ROS_INFO("yRobot: %f", yRobot);
+//    ROS_INFO("orientationRobot: %f", orientationRobot);
+
+    ROS_INFO("xRobot: %f", xRobot);
+    ROS_INFO("yRobot: %f", yRobot);
     ROS_INFO("orientationRobot: %f", orientationRobot);
+    ROS_INFO("BigLeft: %d", BigLeft);
+    ROS_INFO("SmallLeft: %d", SmallLeft);
+    ROS_INFO("WallLeft: %d", WallLeft);
+    ROS_INFO("BigRight: %d", BigRight);
+    ROS_INFO("SmallRight: %d", SmallRight);
+    ROS_INFO("WallRight: %d", WallRight);
+    ROS_INFO("laser_obstacle_flag: %d", laser_obstacle_flag);
+    ROS_INFO("laser_angular_velocity: %f", laser_angular_velocity);
+    ROS_INFO("xLaser: %f", xLaserPerson);
+    ROS_INFO("yLaser: %f", yLaserPerson);
+    ROS_INFO("AngleErrorLaser: %f", AngleErrorLaser);
+    ROS_INFO("KinectLaserError: %f", error);
+    ROS_INFO("match: %d", kinectLaserMatch);
+    ROS_INFO("Confidence: %f", confidence);
+    ROS_INFO("Height: %f", height);
+    ROS_INFO("distanceKinect: %f", distanceKinect);
+    ROS_INFO("age: %f", age);
+    ROS_INFO("AngleErrorKinect: %f", AngleErrorKinect);
+    ROS_INFO("AngleErrorPan: %f", (AngleErrorPan*180)/ PI);
+    ROS_INFO("xperson: %f", xperson);
+    ROS_INFO("yperson: %f", yperson);
+    ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
+    ROS_INFO("tempDistance: %f", tempDistance);
+    ROS_INFO("xLast1: %f", xLast1);
+    ROS_INFO("yLast1: %f", yLast1);
+    ROS_INFO("yDirection: %f", yDirection);
 
 
     //////////////////////////////////marker
@@ -161,6 +202,15 @@ void occlusionKinectCallback(const occlusions::sideOcclusions::ConstPtr& msg)
    SmallRight= msg->smallRight;
    WallRight= msg->wallRight;
 
+//   ROS_INFO("BigLeft: %d", BigLeft);
+//   ROS_INFO("SmallLeft: %d", SmallLeft);
+//   ROS_INFO("WallLeft: %d", WallLeft);
+//   ROS_INFO("BigRight: %d", BigRight);
+//   ROS_INFO("SmallRight: %d", SmallRight);
+//   ROS_INFO("WallRight: %d", WallRight);
+
+
+
    if (BigLeft){followingAngle=-0.5236;}
    else if (SmallLeft){followingAngle=-0.2618;}
    else if (WallLeft){followingAngle=-0.2618;}
@@ -178,8 +228,8 @@ void LaserObstaclesCallback(const obstacles::laserObstacles::ConstPtr& msg)
     laser_angular_velocity=msg->angular_velocity;
     laser_linear_velocity=msg->linear_velocity;
     slow_down_flag=msg->slow_down;
-    ROS_INFO("laser_obstacle_flag: %d", laser_obstacle_flag);
-    ROS_INFO("laser_angular_velocity: %f", laser_angular_velocity);
+//    ROS_INFO("laser_obstacle_flag: %d", laser_obstacle_flag);
+//    ROS_INFO("laser_angular_velocity: %f", laser_angular_velocity);
     if (laser_obstacle_flag){
     cmd_vel.angular.z = laser_angular_velocity;  //turn to avoid obstacles
     cmd_vel.linear.x = laser_linear_velocity;
@@ -198,7 +248,6 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
 {
     cmd_vel.linear.x = 0.0;
     cmd_vel.angular.z = 0.0;
-    double AngleErrorLaser;
 
    int nbOfTracksLaser=msg->people.size();
 
@@ -206,8 +255,9 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        //Extract coordinates of first detected person
        xLaserPerson=msg->people[0].pos.x;
        yLaserPerson=msg->people[0].pos.y;
-       ROS_INFO("xLaser: %f", xLaserPerson);
-       ROS_INFO("yLaser: %f", yLaserPerson);
+//       ROS_INFO("xLaser: %f", xLaserPerson);
+//       ROS_INFO("yLaser: %f", yLaserPerson);
+//       ROS_INFO("AngleErrorLaser: %f", AngleErrorLaser);
 
         if (nbOfTracksKinect==0) {
        //Calculate angle error
@@ -263,14 +313,13 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
 void panCallback(const std_msgs::Float32::ConstPtr& msg)
 {
     AngleErrorPan=msg->data;
+
 }
 
 void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 {
     bool validTrack=false;
-    double xperson;
-    double yperson;
-    double AngleError;
+
 
     //Initialize the twist
     cmd_vel.linear.x = 0.0;
@@ -293,61 +342,59 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 distanceKinect=msg->tracks[i].distance;
                 xperson=((msg->tracks[i].distance)*cos(AngleSmallError+AngleErrorPan));
                 yperson=((msg->tracks[i].distance)*sin(AngleSmallError+AngleErrorPan));
-                AngleError=atan2(yperson,xperson);
+                AngleErrorKinect=atan2(yperson,xperson);
+                age=msg->tracks[i].age;
+                height=msg->tracks[i].height;
+                confidence=msg->tracks[i].confidence;
 
                 YpathPoints.insert(YpathPoints.begin(),yperson);
-                if (YpathPoints.size()>4){
-                    yLast1=YpathPoints.at(3);
+                if (YpathPoints.size()>10){
+                    yLast1=YpathPoints.at(9);
                     yLast2=YpathPoints.at(0);
                     xLast1=xperson;
                     tempDistanceKinect=distanceKinect;
-                    YpathPoints.pop_back();
                     yDirection=yLast2-yLast1;
+                    YpathPoints.pop_back();
                 }
 
 
 
-                double error= sqrt(pow(xperson-xLaserPerson,2)+pow(yperson-yLaserPerson,2));  //calculate the x and y error between the kinect and the laser
-                ROS_INFO("error: %f", error);
+                error= sqrt(pow(xperson-xLaserPerson,2)+pow(yperson-yLaserPerson,2));  //calculate the x and y error between the kinect and the laser
+//                ROS_INFO("KinectLaserError: %f", error);
 
                 if (error<0.2){
                     kinectLaserMatch=true;
-                    ROS_INFO("match: %d", kinectLaserMatch);
+//                    ROS_INFO("match: %d", kinectLaserMatch);
                 }
 
                 //Calculate distance error
                 double DistanceError=msg->tracks[i].distance-DistanceTarget;
 
                 //print to the console
-/*         ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
-                ROS_INFO("Height: %f", msg->tracks[i].height);
-                ROS_INFO("distance: %f", msg->tracks[i].distance);
-                ROS_INFO("age: %f", msg->tracks[i].age);
-                ROS_INFO("AngleError: %f", AngleError);
-                ROS_INFO("AngleErrorPan: %f", (AngleErrorPan*180)/ PI);
-*/
-                ROS_INFO("xperson: %f", xperson);
-                ROS_INFO("yperson: %f", yperson);
+//                ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
+//                ROS_INFO("Height: %f", msg->tracks[i].height);
+//                ROS_INFO("distanceKinect: %f", distanceKinect);
+//                ROS_INFO("age: %f", msg->tracks[i].age);
+//                ROS_INFO("AngleErrorKinect: %f", AngleErrorKinect);
+//                ROS_INFO("AngleErrorPan: %f", (AngleErrorPan*180)/ PI);
+
+//                ROS_INFO("xperson: %f", xperson);
+//                ROS_INFO("yperson: %f", yperson);
 
                 //Set command Twist
           //      if(smallError==false ){  //to reduce vibration around 0 angle of the kinect view, and 0 robot angle  // && abs(AngleErrorPan)<0.05
           //    cmd_vel.angular.z = (AngleErrorPan+followingAngle)*KpAngle;
                 if (!laser_obstacle_flag){
-                cmd_vel.angular.z = (AngleError+followingAngle)*KpAngle;
-
-         //       ROS_INFO("cmd_vel.angular.z: %f", cmd_vel.angular.z);
-
+                cmd_vel.angular.z = (AngleErrorKinect+followingAngle)*KpAngle;
 
              //   cmd_vel.angular.z = AngleError*KpAngle;
             //    }
                 //Avoid going backward
                 if (DistanceError>0.05){  //threshold for small distance error of 0.05 meter
                     double command_speed=DistanceError*KpDistance;
-            //        ROS_INFO("VelocityLinear: %f", command_speed);
                     //Limit the speed
                     if (command_speed>MaxSpeed){command_speed=MaxSpeed;}
                     cmd_vel.linear.x = command_speed;
-           //         ROS_INFO("VelocityLinear: %f", command_speed);
                 }
                 //Stop for loop
                 validTrack=true;
@@ -371,7 +418,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             marker.pose.orientation.x = 0.0;
             marker.pose.orientation.y = 0.0;
             marker.pose.orientation.z = 0.0;
-            marker.pose.orientation.w = AngleError;
+            marker.pose.orientation.w = AngleErrorKinect;
             marker.scale.x = 0.1;
             marker.scale.y = 0.1;
             marker.scale.z = 0.1;
@@ -383,17 +430,17 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
     ////////////////////////
     }
     else{
-        xPath= xRobot+cos(orientationRobot+AngleError)*tempDistanceKinect;
-        yPath= yRobot+sin(orientationRobot+AngleError)*tempDistanceKinect;
+        xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
+        yPath= yRobot+sin(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
         AngleErrorFollow=PI-atan2(yPath-yRobot,(xPath-xRobot))-PI+orientationRobot;
             if(abs(AngleErrorFollow)>PI){
                 if(AngleErrorFollow<0){AngleErrorFollow=AngleErrorFollow+2*PI;}
                 else{AngleErrorFollow=AngleErrorFollow-2*PI;}
             }
-            ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
+//            ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
             tempDistance=sqrt(pow(xPath-xRobot,2)+pow(yPath-yRobot,2))-count*50*0.3/1000;
             count++;
-            ROS_INFO("tempDistance: %f", tempDistance);
+//            ROS_INFO("tempDistance: %f", tempDistance);
 
             if (!laser_obstacle_flag){
            // tempAngular=atan2(yLast1,xLast1);
@@ -405,18 +452,17 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
           //      cmd_vel_pub.publish(cmd_vel);
             if(tempDistance<0.5){
                 cmd_vel.linear.x = 0;
-                if (yDirection>0){cmd_vel.angular.z=0.1;}
-                else{cmd_vel.angular.z=-0.1;}
+                if (yDirection>0){cmd_vel.angular.z=0.2;}
+                else{cmd_vel.angular.z=-0.2;}
             }
 //        }
             //Stop for loop
             validTrack=true;
             cmd_vel_pub.publish(cmd_vel);
 
-        ROS_INFO("xLast1: %f", xLast1);
-        ROS_INFO("xPath: %f", xPath);
-        ROS_INFO("yLast1: %f", yLast1);
-
+//        ROS_INFO("xLast1: %f", xLast1);
+//        ROS_INFO("yLast1: %f", yLast1);
+//        ROS_INFO("yDirection: %f", yDirection);
     }
     }
 }
