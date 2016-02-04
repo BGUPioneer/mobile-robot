@@ -142,8 +142,9 @@ void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
                 ( ((sqrt(pow(XclosestObstacle-xLaserPerson,2)+pow(YclosestObstacle-yLaserPerson,2))>radiusPerson) && (xLaserPerson!=0.0))||
                  ((sqrt(pow(XclosestObstacle-xKinectPerson,2)+pow(YclosestObstacle-yKinectPerson,2))>radiusPerson) && (xKinectPerson!=0.0)) )){
 
-      if(linearVelocity>0.2){linearCommand=0.2;}     //move slow near obstacles
-        else {linearCommand=linearVelocity;}
+  //    if(linearVelocity>0.2){linearCommand=0.2;}     //move slow near obstacles
+  //      else {linearCommand=linearVelocity;}
+      linearCommand=0.2;
       //if obstacle from the left than turn right (positive angular velocity)
       if (YclosestObstacle>=0){
       angularCommand=-(WidthCheck-YclosestObstacle)/2;

@@ -165,8 +165,8 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
   ROS_INFO("age: %f", age);
   ROS_INFO("AngleErrorKinect: %f", AngleErrorKinect);
   ROS_INFO("AngleErrorPan: %f", (AngleErrorPan*180)/ PI);
-  ROS_INFO("xperson: %f", xperson);
-  ROS_INFO("yperson: %f", yperson);
+  ROS_INFO("xKinect: %f", xperson);
+  ROS_INFO("yKinect: %f", yperson);
   ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
   ROS_INFO("xPath: %f", xPath);
   ROS_INFO("yPath: %f", yPath);
@@ -416,7 +416,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 if (error<0.2){
                     kinectLaserMatch=true;
 //                    ROS_INFO("match: %d", kinectLaserMatch);
-                }
+                }else{kinectLaserMatch=false;}
 
                 //Calculate distance error
                 DistanceErrorKinect=msg->tracks[i].distance;

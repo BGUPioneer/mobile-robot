@@ -156,9 +156,9 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     ROS_INFO("distanceKinect: %f", distanceKinect);
     ROS_INFO("age: %f", age);
     ROS_INFO("AngleErrorKinect: %f", AngleErrorKinect);
-    ROS_INFO("AngleErrorPan: %f", (AngleErrorPan*180)/ PI);
-    ROS_INFO("xperson: %f", xperson);
-    ROS_INFO("yperson: %f", yperson);
+    ROS_INFO("AngleErrorPan: %f", (AngleErrorPan*180)/PI);
+    ROS_INFO("xKinect: %f", xperson);
+    ROS_INFO("yKinect: %f", yperson);
     ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
     ROS_INFO("tempDistance: %f", tempDistance);
     ROS_INFO("xLast1: %f", xLast1);
@@ -335,10 +335,6 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             //oldest track which is older than the age threshold and above the confidence threshold
             if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold) && (msg->tracks[i].height<HeightMaxTheshold)){
 
-                //Calculate angle error
-            //    float xperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(cos(AngleErrorPan));
-            //    float yperson=((msg->tracks[i].distance)*cos(AngleSmallError))*(sin(AngleErrorPan));
-                count=0;
                 distanceKinect=msg->tracks[i].distance;
                 xperson=((msg->tracks[i].distance)*cos(AngleSmallError+AngleErrorPan));
                 yperson=((msg->tracks[i].distance)*sin(AngleSmallError+AngleErrorPan));
@@ -350,7 +346,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 YpathPoints.insert(YpathPoints.begin(),yperson);
                 if (YpathPoints.size()>10){
                     yLast1=YpathPoints.at(9);
-                    yLast2=YpathPoints.at(0);
+                    yLast2=YpathPoints.at(1);
                     xLast1=xperson;
                     tempDistanceKinect=distanceKinect;
                     yDirection=yLast2-yLast1;
@@ -365,7 +361,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 if (error<0.2){
                     kinectLaserMatch=true;
 //                    ROS_INFO("match: %d", kinectLaserMatch);
-                }
+                }else{kinectLaserMatch=false;}
 
                 //Calculate distance error
                 double DistanceError=msg->tracks[i].distance-DistanceTarget;
@@ -429,7 +425,38 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             vis_pub2.publish( marker );
     ////////////////////////
     }
+
     else{
+            xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
+            yPath= yRobot+sin(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
+            AngleErrorFollow=PI-atan2(yPath-yRobot,(xPath-xRobot))-PI+orientationRobot;
+                if(abs(AngleErrorFollow)>PI){
+                    if(AngleErrorFollow<0){AngleErrorFollow=AngleErrorFollow+2*PI;}
+                    else{AngleErrorFollow=AngleErrorFollow-2*PI;}
+                }
+                tempDistance=sqrt(pow(xPath-xRobot,2)+pow(yPath-yRobot,2));
+
+                if (!laser_obstacle_flag){
+                    ros::Time start= ros::Time::now();
+                    while(ros::Time::now()-start<ros::Duration(round(tempDistance/0.3))){
+                    cmd_vel.linear.x = 0.3;}
+
+                    cmd_vel.linear.x = 0;
+                    if (yDirection>0){cmd_vel.angular.z=0.15;}
+                    else{cmd_vel.angular.z=-0.15;}
+
+                //Stop for loop
+                validTrack=true;
+                cmd_vel_pub.publish(cmd_vel);
+
+    //        ROS_INFO("xLast1: %f", xLast1);
+    //        ROS_INFO("yLast1: %f", yLast1);
+    //        ROS_INFO("yDirection: %f", yDirection);
+        }
+        }
+
+
+/*    else{
         xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
         yPath= yRobot+sin(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
         AngleErrorFollow=PI-atan2(yPath-yRobot,(xPath-xRobot))-PI+orientationRobot;
@@ -465,6 +492,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 //        ROS_INFO("yDirection: %f", yDirection);
     }
     }
+*/
 }
 
 };
