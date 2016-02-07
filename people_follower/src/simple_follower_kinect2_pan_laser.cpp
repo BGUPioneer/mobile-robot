@@ -105,6 +105,8 @@ class kinect2_pan_laser
          std::vector<double> YpathPoints;
 
 
+
+
 public:
       kinect2_pan_laser()
 

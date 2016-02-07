@@ -79,13 +79,14 @@ class ImageConverter
     bool validTrack;               //good track
     int nbOfTracks;                //number of ID tracks
     float normalize;               //normalize the depth value
-
+/*
     bool smallLeftOcclusions= false;    //detect occlusion from the left (point of view of the robot)
     bool bigLeftOcclusions= false;      //detect occlusion from the left (point of view of the robot)
     bool LeftWall= false;               //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
     bool smallRightOcclusions= false;   //detect occlusion from the left (point of view of the robot)
     bool bigRightOcclusions= false;     //detect occlusion from the left (point of view of the robot)
     bool RightWall= false;              //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+*/
 
 public:
     ImageConverter()
@@ -148,6 +149,14 @@ void imageDepthCallback(const sensor_msgs::ImageConstPtr& msg)     //working on 
     //      cv::waitKey(3);
 
           image_pub.publish(cv_ptr->toImageMsg());      // Output modified video stream
+
+          bool smallLeftOcclusions= false;    //detect occlusion from the left (point of view of the robot)
+          bool bigLeftOcclusions= false;      //detect occlusion from the left (point of view of the robot)
+          bool LeftWall= false;               //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+          bool smallRightOcclusions= false;   //detect occlusion from the left (point of view of the robot)
+          bool bigRightOcclusions= false;     //detect occlusion from the left (point of view of the robot)
+          bool RightWall= false;              //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+
 if(distance<changeDepthToRGB){
     xc=(xmin+xmax)/2;                        //center of the BBC
 //    depth = cv_ptr->image.at<short int>(cv::Point(xc,yc));//milimeters for topic kinect2_head/depth_rect/image. and -XXXXX for topic kinect2_head/ir_rect_eq/image  -the amount of infrared light reflected back to the camera.
@@ -260,6 +269,14 @@ void imageRGBCallback(const sensor_msgs::ImageConstPtr& msg)     //working on th
     //      cv::waitKey(3);
 
           image_pub.publish(cv_ptr->toImageMsg());      // Output modified video stream
+
+          bool smallLeftOcclusions= false;    //detect occlusion from the left (point of view of the robot)
+          bool bigLeftOcclusions= false;      //detect occlusion from the left (point of view of the robot)
+          bool LeftWall= false;               //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+          bool smallRightOcclusions= false;   //detect occlusion from the left (point of view of the robot)
+          bool bigRightOcclusions= false;     //detect occlusion from the left (point of view of the robot)
+          bool RightWall= false;              //detect a "tall" occlusion from the left (point of view of the robot) like a wall for all the y axis of the person bounding box
+
 if(distance>changeDepthToRGB){
     cv::Mat deleteMargin= cv::Mat::zeros(1080,1710,0);
     deleteMargin = cv_ptr->image(Rect(104,0,1710,1080)).clone();     //because there is a different FOV between depth and RGB i delete the 105 pixels from each side to reduce the FOV different
