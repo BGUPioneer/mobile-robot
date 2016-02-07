@@ -137,12 +137,14 @@ include_directories(
 # add_executable(occlusions_node src/occlusions_node.cpp)
 add_executable(depth_occlusions src/depth_occlusions.cpp)
 add_executable(rgb_occlusions src/rgb_occlusions.cpp)
+add_executable(occlusions_depthAndRGB src/occlusions_depthAndRGB.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(occlusions_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(depth_occlusions ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(rgb_occlusions ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(occlusions_depthAndRGB ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(occlusions_node
@@ -152,6 +154,9 @@ target_link_libraries(depth_occlusions
    ${catkin_LIBRARIES}
  )
 target_link_libraries(rgb_occlusions
+   ${catkin_LIBRARIES}
+ )
+target_link_libraries(occlusions_depthAndRGB
    ${catkin_LIBRARIES}
  )
 

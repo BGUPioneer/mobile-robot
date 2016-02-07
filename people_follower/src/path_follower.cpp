@@ -52,6 +52,7 @@ class kinect2_pan_laser
     ros::Publisher cmd_vel_pub;
 
          double KpAngle=0.5;
+         double KpAngleOcclusion=0.2; //for changing the following angle while occlusion
          double KpDistance=0.2;
          double DistanceTarget=1.2;
          double MaxSpeed=0.5;
@@ -302,7 +303,7 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        cmd_vel.angular.z =-AngleErrorFollow*KpAngle;
 
        DistanceErrorFollow=sqrt(pow(xFollow-xRobot,2)+pow(yFollow-yRobot,2));
-       if (DistanceErrorLaser>DistanceTarget){ linearspeedLaser=(DistanceErrorFollow)*KpDistance;}
+       if (DistanceErrorLaser>DistanceTarget){ linearspeedLaser=(DistanceErrorFollow-DistanceTarget)*KpDistance;}
        else{linearspeedLaser=0;}
 //       ROS_INFO("DistanceErrorLaser: %f", DistanceErrorLaser);
 
@@ -399,9 +400,9 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
           //      YpathPoints.insert(YpathPoints.begin(),yperson);
 //                ROS_INFO("size: %d", XpathPoints.size());
 
-                if (XpathPoints.size()>91){
-                xFollow=XpathPoints.at(90);
-                yFollow=YpathPoints.at(90);
+                if (XpathPoints.size()>51){
+                xFollow=XpathPoints.at(50);
+                yFollow=YpathPoints.at(50);
 
 //                ROS_INFO("xFollow: %f", xFollow);
 //                ROS_INFO("yFollow: %f", yFollow);
@@ -451,11 +452,12 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 //                    ROS_INFO("angle: %f", PI-atan2(yFollow-yRobot,(xFollow-xRobot)));
 //                    ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
 
-
-                cmd_vel.angular.z =-AngleErrorFollow*KpAngle;
+                    if(abs(followingAngle)<0.1){cmd_vel.angular.z = (-AngleErrorFollow+followingAngle)*KpAngle;}
+                    else {cmd_vel.angular.z = (-AngleErrorFollow+followingAngle)*KpAngleOcclusion;}
+            //    cmd_vel.angular.z =-AngleErrorFollow*KpAngle;
 
                 DistanceErrorFollow=sqrt(pow(xFollow-xRobot,2)+pow(yFollow-yRobot,2));
-                if (DistanceErrorKinect>DistanceTarget){ linearspeedKinect=(DistanceErrorFollow)*KpDistance;}
+                if (DistanceErrorKinect>DistanceTarget){ linearspeedKinect=(DistanceErrorFollow-DistanceTarget)*KpDistance;}
                 else{linearspeedKinect=0;}
 //                ROS_INFO("DistanceErrorLaser: %f", DistanceErrorLaser);
 

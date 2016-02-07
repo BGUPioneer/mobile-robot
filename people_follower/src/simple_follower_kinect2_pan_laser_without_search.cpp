@@ -427,86 +427,20 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
     ////////////////////////
     }
 
-    else{
-            xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
-            yPath= yRobot+sin(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
-            AngleErrorFollow=PI-atan2(yPath-yRobot,(xPath-xRobot))-PI+orientationRobot;
-                if(abs(AngleErrorFollow)>PI){
-                    if(AngleErrorFollow<0){AngleErrorFollow=AngleErrorFollow+2*PI;}
-                    else{AngleErrorFollow=AngleErrorFollow-2*PI;}
-                }
-                tempDistance=sqrt(pow(xPath-xRobot,2)+pow(yPath-yRobot,2));
-
-                if (!laser_obstacle_flag){
-                    ros::Time start= ros::Time::now();
-                    while(ros::Time::now()-start<ros::Duration(round(tempDistance/0.3))){
-                    cmd_vel.linear.x = 0.3;}
-
-                    cmd_vel.linear.x = 0;
-                    if (yDirection>0){cmd_vel.angular.z=0.15;}
-                    else{cmd_vel.angular.z=-0.15;}
-
-                //Stop for loop
-                validTrack=true;
-                cmd_vel_pub.publish(cmd_vel);
-
-    //        ROS_INFO("xLast1: %f", xLast1);
-    //        ROS_INFO("yLast1: %f", yLast1);
-    //        ROS_INFO("yDirection: %f", yDirection);
-        }
-        }
-
-
-/*    else{
-        xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
-        yPath= yRobot+sin(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
-        AngleErrorFollow=PI-atan2(yPath-yRobot,(xPath-xRobot))-PI+orientationRobot;
-            if(abs(AngleErrorFollow)>PI){
-                if(AngleErrorFollow<0){AngleErrorFollow=AngleErrorFollow+2*PI;}
-                else{AngleErrorFollow=AngleErrorFollow-2*PI;}
-            }
-//            ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
-            tempDistance=sqrt(pow(xPath-xRobot,2)+pow(yPath-yRobot,2))-count*50*0.3/1000;
-            count++;
-//            ROS_INFO("tempDistance: %f", tempDistance);
-
-            if (!laser_obstacle_flag){
-           // tempAngular=atan2(yLast1,xLast1);
-            cmd_vel.angular.z =-AngleErrorFollow*KpAngle;
-            if(AngleErrorFollow<0.5){cmd_vel.angular.z =0;}
-    //       if(AngleErrorFollow<0.05&&tempDistance>0.5){
-                double command_speed=0.3;
-                cmd_vel.linear.x = command_speed;
-          //      cmd_vel_pub.publish(cmd_vel);
-            if(tempDistance<0.5){
-                cmd_vel.linear.x = 0;
-                if (yDirection>0){cmd_vel.angular.z=0.2;}
-                else{cmd_vel.angular.z=-0.2;}
-            }
-//        }
-            //Stop for loop
-            validTrack=true;
-            cmd_vel_pub.publish(cmd_vel);
-
-//        ROS_INFO("xLast1: %f", xLast1);
-//        ROS_INFO("yLast1: %f", yLast1);
-//        ROS_INFO("yDirection: %f", yDirection);
-    }
-    }
-*/
 }
 
 };
 
 int main(int argc, char **argv){
 
-    ros::init(argc, argv, "simple_follower_kinect2_pan_laser");
+    ros::init(argc, argv, "simple_follower_kinect2_pan_laser_without_search");
     kinect2_pan_laser kpl;
     ros::NodeHandle n;
 
     ros::spin();
     return 0;
 }
+
 
 
 

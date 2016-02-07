@@ -139,6 +139,7 @@ add_executable(simple_follower_kinect2_pan src/simple_follower_kinect2_pan.cpp)
 add_executable(simple_follower_kinect2_pan30 src/simple_follower_kinect2_pan30.cpp)
 add_executable(simple_follower_kinect2_pan60 src/simple_follower_kinect2_pan60.cpp)
 add_executable(simple_follower_kinect2_pan_laser src/simple_follower_kinect2_pan_laser.cpp)
+add_executable(simple_follower_kinect2_pan_laser_without_search src/simple_follower_kinect2_pan_laser_without_search.cpp)
 add_executable(path_follower src/path_follower.cpp)
 
 ## Add cmake target dependencies of the executable
@@ -162,6 +163,9 @@ target_link_libraries(simple_follower_kinect2_pan60
    ${catkin_LIBRARIES}
  )
 target_link_libraries(simple_follower_kinect2_pan_laser
+   ${catkin_LIBRARIES}
+ )
+target_link_libraries(simple_follower_kinect2_pan_laser_without_search
    ${catkin_LIBRARIES}
  )
 target_link_libraries(path_follower

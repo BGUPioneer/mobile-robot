@@ -37,7 +37,8 @@ class LaserObstacles
 
     ros::Publisher pub=(n.advertise<obstacles::laserObstacles> ("/obstacles/laserObstacles",10));
 
-    double DistanceCheck=1.5;  //in front of the robot
+    double KpDistanceCheck=3; //Kp for distance depend on linear velocity
+    double DistanceCheck=0.6;  // minimum distance in front of the robot
     double WidthCheck= 0.5;  //for each side
     double DistanceSlowDownCheck= 1.5;  //for each side
     double angularVelocity;
@@ -115,7 +116,7 @@ void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
   for (int i=0; i<pc_out.points.size() ;i++)
   {
       //an obstacle inside the DistanceCheck and more than radiusPerson from a detected legs or detected person from the Kinect
-      if ((pc_out.points[i].x < DistanceSlowDownCheck) && (pc_out.points[i].x >-abs(angularVelocity))  &&
+      if (((pc_out.points[i].x < KpDistanceCheck*linearVelocity) || (pc_out.points[i].x < DistanceCheck)) && (pc_out.points[i].x >-abs(angularVelocity))  &&
               ( ((sqrt(pow(pc_out.points[i].x-xLaserPerson,2)+pow(pc_out.points[i].y-yLaserPerson,2))>radiusPerson) && (xLaserPerson!=0.0))||
                ((sqrt(pow(pc_out.points[i].x-xKinectPerson,2)+pow(pc_out.points[i].y-yKinectPerson,2))>radiusPerson) && (xKinectPerson!=0.0)) ))
       {
@@ -138,7 +139,7 @@ void LaserCallback(const sensor_msgs::PointCloud::ConstPtr& msg)
   }
  //   if(XclosestObstacle < DistanceCheck){
 
-        if ((XclosestObstacle < DistanceCheck) && (XclosestObstacle >-abs(angularVelocity))  &&
+        if (((XclosestObstacle < KpDistanceCheck*linearVelocity) || (XclosestObstacle < DistanceCheck)) && (XclosestObstacle >-abs(angularVelocity))  &&
                 ( ((sqrt(pow(XclosestObstacle-xLaserPerson,2)+pow(YclosestObstacle-yLaserPerson,2))>radiusPerson) && (xLaserPerson!=0.0))||
                  ((sqrt(pow(XclosestObstacle-xKinectPerson,2)+pow(YclosestObstacle-yKinectPerson,2))>radiusPerson) && (xKinectPerson!=0.0)) )){
 
