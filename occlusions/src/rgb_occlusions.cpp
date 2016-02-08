@@ -138,7 +138,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)             //working 
        rgbymin=ymin;                                                 //bottom-left of the BBC from the MONO image
        rgbymax=rgbymin+(ymax-ymin)*1.3;                              //bottom-right of the BBC from the MONO image with more for the legs but not the ground
 
-    ROS_INFO("xcenter: %f", xcenter);
+//    ROS_INFO("xcenter: %f", xcenter);
 
 
     int marginAdd= round(50/distance);                              //add margin depend on distance
@@ -211,8 +211,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)             //working 
           // Output modified video stream
           image_pub.publish(cv_ptr->toImageMsg());
 
-        ROS_INFO("LeftWall: %d", LeftWall);
-        ROS_INFO("RightWall: %d", RightWall);
+ //       ROS_INFO("LeftWall: %d", LeftWall);
+ //       ROS_INFO("RightWall: %d", RightWall);
 
   //publish the boolians variables
   //  bool_msg.bigLeft=bigLeftOcclusions;
@@ -223,6 +223,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)             //working 
     bool_msg.wallRight=RightWall;
 
     side.publish(bool_msg);
+
+    ROS_INFO("distance: %f", distance);
+    ROS_INFO("LeftWall: %d", LeftWall);
+    ROS_INFO("RightWall: %d", RightWall);
 
     }
 };

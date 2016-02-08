@@ -38,9 +38,9 @@ class LaserObstacles
     ros::Publisher pub=(n.advertise<obstacles::laserObstacles> ("/obstacles/laserObstacles",10));
 
     double KpDistanceCheck=3; //Kp for distance depend on linear velocity
-    double DistanceCheck=0.6;  // minimum distance in front of the robot
+    double DistanceCheck=0.8;  // minimum distance in front of the robot
     double WidthCheck= 0.5;  //for each side
-    double DistanceSlowDownCheck= 1.5;  //for each side
+    double DistanceSlowDownCheck= 1.5;
     double angularVelocity;
     double linearVelocity;
     double xLaserPerson;

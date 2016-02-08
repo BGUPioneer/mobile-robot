@@ -69,6 +69,7 @@ class ImageConverter
     int nbOfTracks;                //number of ID tracks
     float normalize;               //normalize the depth value
 
+
 public:
     ImageConverter()
       : it_(n)
@@ -135,7 +136,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)     //working on the d
     personDepth=distance*1000;               //to avoid an error from calculate the depth only from one pixel, it's better to calculate from the all distance from the person and multipile by 1000 to get milimeters
     depth=personDepth*255/pow(2,16);         //to normalize to 255
 
-    ROS_INFO("personDepth: %f", personDepth);
+ //   ROS_INFO("personDepth: %f", personDepth);
 
 //left and right detections
     int downCut= round((ymax-ymin)/8);                          //to cut the lower part of the person for reduce floor alarm
@@ -193,28 +194,28 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)     //working on the d
 
         if (countLeft>smallOcclusions&&countLeft<bigOcclusions){           //if number of pixels from the left are between smallLeftOcclusions and bigLeftOcclusions this is a smallLeft
             smallLeftOcclusions=true;
-            ROS_INFO("LeftOcclusions: small %d", countLeft);
+ //           ROS_INFO("LeftOcclusions: small %d", countLeft);
         }
         else  if (countLeft>bigOcclusions){                                //if number of pixels from the left are more than bigLeftOcclusions this is a bigLeft
             bigLeftOcclusions=true;
-            ROS_INFO("LeftOcclusions: big %d", countLeft);
+//            ROS_INFO("LeftOcclusions: big %d", countLeft);
         }
-        else {ROS_INFO("LeftOcclusions: false %d", countLeft);             //else there is no occlusions
+        else {//ROS_INFO("LeftOcclusions: false %d", countLeft);             //else there is no occlusions
   //      ROS_INFO("depth: %f", depth);
         }
 
-        ROS_INFO("RightWall: %d", RightWall);
-        ROS_INFO("LeftWall: %d", LeftWall);
+ //       ROS_INFO("RightWall: %d", RightWall);
+ //       ROS_INFO("LeftWall: %d", LeftWall);
 
         if (countRight>smallOcclusions&&countRight<bigOcclusions){         //if number of pixels from the right are between smallRightOcclusions and bigRightOcclusions this is a smallRight
             smallRightOcclusions=true;
-            ROS_INFO("RightOcclusions: small %d", countRight);
+ //           ROS_INFO("RightOcclusions: small %d", countRight);
         }
         else  if (countRight>bigOcclusions){                               //if number of pixels from the right are more than bigRightOcclusions this is a bigRight
             bigRightOcclusions=true;
-            ROS_INFO("RightOcclusions: big %d", countRight);
+ //           ROS_INFO("RightOcclusions: big %d", countRight);
         }
-        else {ROS_INFO("RightOcclusions: false %d", countRight);           //else there is no occlusions
+        else {//ROS_INFO("RightOcclusions: false %d", countRight);           //else there is no occlusions
     //    ROS_INFO("depth: %f", depth);
         }
 
@@ -228,6 +229,20 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)     //working on the d
     bool_msg.wallRight=RightWall;
 
     side.publish(bool_msg);
+
+    ROS_INFO("personDepth: %f", personDepth);
+    ROS_INFO("distance: %f", distance);
+    ROS_INFO("smallLeftOcclusions: %d", smallLeftOcclusions);
+    ROS_INFO("bigLeftOcclusions: %d", bigLeftOcclusions);
+    ROS_INFO("LeftWall: %d", LeftWall);
+    ROS_INFO("countLeft: %f", countLeft);
+    ROS_INFO("smallRightOcclusions: %d", smallRightOcclusions);
+    ROS_INFO("bigRightOcclusions: %d", bigRightOcclusions);
+    ROS_INFO("RightWall: %d", RightWall);
+    ROS_INFO("countRight: %f", countRight);
+
+
+
     }
 };
 

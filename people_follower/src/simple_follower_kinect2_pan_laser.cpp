@@ -430,6 +430,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
     }
 
     else{
+            validTrack=false;
             xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
             yPath= yRobot+sin(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
             AngleErrorFollow=PI-atan2(yPath-yRobot,(xPath-xRobot))-PI+orientationRobot;
@@ -439,17 +440,33 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 }
                 tempDistance=sqrt(pow(xPath-xRobot,2)+pow(yPath-yRobot,2));
 
+                //Get the number of tracks in the TrackArray
+                nbOfTracksKinect=msg->tracks.size();
+
+                //If at least 1 track, proceed
+                if (nbOfTracksKinect>0) {
+                    //looping throught the TrackArray
+                    for(int i=0;i<nbOfTracksKinect && !validTrack;i++){
+                        //oldest track which is older than the age threshold and above the confidence threshold
+                        if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold) && (msg->tracks[i].height<HeightMaxTheshold)){
+                        validTrack=true;
+                        }
+                    }
+                }
+
                 if (!laser_obstacle_flag){
                     ros::Time start= ros::Time::now();
-                    while(ros::Time::now()-start<ros::Duration(round(tempDistance/0.3))){
-                    cmd_vel.linear.x = 0.3;}
+                    while((ros::Time::now()-start<ros::Duration(round(tempDistance/0.3))) && (!validTrack) && (!laser_obstacle_flag)){
+                    cmd_vel.linear.x = 0.3;
+                    cmd_vel.angular.z=0.0;}
 
-                    cmd_vel.linear.x = 0;
-                    if (yDirection>0){cmd_vel.angular.z=0.15;}
+                    cmd_vel.linear.x = 0.0;
+                    if(!validTrack){
+                    if(yDirection>0){cmd_vel.angular.z=0.15;}
                     else{cmd_vel.angular.z=-0.15;}
-
+                    }
                 //Stop for loop
-                validTrack=true;
+             //   validTrack=true;
                 cmd_vel_pub.publish(cmd_vel);
 
     //        ROS_INFO("xLast1: %f", xLast1);
