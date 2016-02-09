@@ -102,6 +102,8 @@ class kinect2_pan_laser
          double height;
          double confidence;
          double error;
+         bool kinectTrack=false;
+         bool laserTrack=false;
          std::vector<double> YpathPoints;
 
 
@@ -164,6 +166,9 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     ROS_INFO("xLast1: %f", xLast1);
     ROS_INFO("yLast1: %f", yLast1);
     ROS_INFO("yDirection: %f", yDirection);
+    ROS_INFO("kinectTrack: %d", kinectTrack);
+    ROS_INFO("laserTrack: %d", laserTrack);
+
 
 
     //////////////////////////////////marker
@@ -282,6 +287,7 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
            cmd_vel_pub.publish(cmd_vel);
        }
      }
+        laserTrack=true;
 //////////////////////////////////marker
         visualization_msgs::Marker marker;
         marker.header.frame_id = "base_link";
@@ -308,6 +314,7 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
 ////////////////////////
 
   }
+   else{laserTrack=false;}
 }
 
 void panCallback(const std_msgs::Float32::ConstPtr& msg)
@@ -400,7 +407,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
         }
     }
 
-
+        kinectTrack=true;
     //////////////////////////////////marker
             visualization_msgs::Marker marker;
             marker.header.frame_id = "base_link";
@@ -426,6 +433,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             vis_pub2.publish( marker );
     ////////////////////////
     }
+    else{kinectTrack=false;}
 
 }
 

@@ -105,6 +105,8 @@ class kinect2_pan_laser
          double age;
          double height;
          double confidence;
+         bool kinectTrack=false;
+         bool laserTrack=false;
          std::vector<double> XpathPoints;
          std::vector<double> YpathPoints;
 
@@ -173,15 +175,18 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
   ROS_INFO("yPath: %f", yPath);
   ROS_INFO("xFollow: %f", xFollow);
   ROS_INFO("yFollow: %f", yFollow);
+  ROS_INFO("kinectTrack: %d", kinectTrack);
+  ROS_INFO("laserTrack: %d", laserTrack);
 
 
 
   //////////////////////////////////marker
+          for(int i=0;i<100000;i++){
           visualization_msgs::Marker marker;
           marker.header.frame_id = "odom";
           marker.header.stamp = ros::Time();
           marker.ns = "robotPose";
-          marker.id = 0;
+          marker.id = i;
           marker.type = visualization_msgs::Marker::SPHERE;
           marker.action = visualization_msgs::Marker::ADD;
           marker.pose.position.x = xRobot;
@@ -190,7 +195,6 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
           marker.pose.orientation.x = 0.0;
           marker.pose.orientation.y = 0.0;
           marker.pose.orientation.z = 0.0;
-       //   marker.pose.orientation.w = orientationRobot;
           marker.pose.orientation.w = 1.0;
           marker.scale.x = 0.3;
           marker.scale.y = 0.3;
@@ -200,6 +204,7 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
           marker.color.g = 0.0;
           marker.color.b = 0.0;
           vis_pub3.publish( marker );
+          }
   ////////////////////////
 }
 
@@ -212,13 +217,22 @@ void occlusionKinectCallback(const occlusions::sideOcclusions::ConstPtr& msg)
    SmallRight= msg->smallRight;
    WallRight= msg->wallRight;
 
-   if (BigLeft){followingAngle=-0.5236;}
+   if (BigLeft && !BigRight && !SmallRight){followingAngle=-0.5236;}
+   if (SmallLeft && !BigLeft && !BigRight && !SmallRight){followingAngle=-0.2618;}
+   if (WallLeft && !WallRight){followingAngle=-0.2618;}
+
+   if (BigRight && !BigLeft && !SmallLeft){followingAngle=0.5236;}
+   if (SmallRight && !BigRight && !BigLeft && !SmallLeft){followingAngle=0.2618;}
+   if (WallRight && !WallLeft){followingAngle=0.2618;}
+////////////////////////////
+/*   if (BigLeft){followingAngle=-0.5236;}
    else if (SmallLeft){followingAngle=-0.2618;}
    else if (WallLeft){followingAngle=-0.2618;}
 
    if (BigRight){followingAngle=0.5236;}
    else if (SmallRight){followingAngle=0.2618;}
    else if (WallRight){followingAngle=0.2618;}
+*/
 
    //followingAngle //15 deg= 0.2618 ,30 deg= 0.5236 rad, 60 deg= 1.0472 rad
 }
@@ -320,12 +334,15 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        }
       }
      }
+        laserTrack=true;
+
         //////////////////////////////////marker
+                for(int i=0;i<100000;i++){
                 visualization_msgs::Marker marker;
                 marker.header.frame_id = "base_link";
                 marker.header.stamp = ros::Time();
                 marker.ns = "laser";
-                marker.id = 0;
+                marker.id = i;
                 marker.type = visualization_msgs::Marker::SPHERE;
                 marker.action = visualization_msgs::Marker::ADD;
                 marker.pose.position.x = xFollow;
@@ -343,8 +360,10 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
                 marker.color.g = 1.0;
                 marker.color.b = 0.0;
                 vis_pub1.publish( marker );
+                }
         ////////////////////////
     }
+   else{laserTrack=false;}
 
    cmd_vel_pub.publish(cmd_vel);
 }
@@ -490,12 +509,15 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 ROS_INFO("yperson: %f", 0.0);
  */
             }
+            kinectTrack=true;
+
             //////////////////////////////////marker
+                    for(int i=0;i<100000;i++){
                     visualization_msgs::Marker marker;
                     marker.header.frame_id = "base_link";
                     marker.header.stamp = ros::Time();
                     marker.ns = "kinect";
-                    marker.id = 0;
+                    marker.id = i;
                     marker.type = visualization_msgs::Marker::SPHERE;
                     marker.action = visualization_msgs::Marker::ADD;
                     marker.pose.position.x = xFollow;
@@ -513,10 +535,12 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                     marker.color.g = 1.0;
                     marker.color.b = 1.0;
                     vis_pub2.publish( marker );
+                    }
             ////////////////////////
         }
 
     }
+    else{kinectTrack=false;}
 }
 
 

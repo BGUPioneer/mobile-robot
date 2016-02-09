@@ -92,6 +92,22 @@ class kinect2_pan_laser
          double yDirection;
          double tempAngular;
          double tempDistance;
+         bool validTrackKinect=false;
+
+         bool validTrackLaser=false;
+         double tempDistanceLaser;
+         double tempDistanceFollowLaser;
+         double xPathLaser;
+         double yPathLaser;
+         double xLast1Laser;
+         double yLast1Laser;
+         double yLast2Laser;
+         double yDirectionLaser;
+         double tempAngularLaser;
+         double DistanceErrorLaser;
+         double AngleErrorFollowLaser;
+         int nbOfTracksLaser=0;
+
          double AngleErrorFollow;
          double count;
          double AngleErrorLaser;
@@ -102,7 +118,10 @@ class kinect2_pan_laser
          double height;
          double confidence;
          double error;
+         bool kinectTrack=false;
+         bool laserTrack=false;
          std::vector<double> YpathPoints;
+         std::vector<double> YpathPointsLaser;
 
 
 
@@ -166,16 +185,22 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
     ROS_INFO("xLast1: %f", xLast1);
     ROS_INFO("yLast1: %f", yLast1);
     ROS_INFO("yDirection: %f", yDirection);
+    ROS_INFO("kinectTrack: %d", kinectTrack);
+    ROS_INFO("laserTrack: %d", laserTrack);
+
+
 
 
     //////////////////////////////////marker
+            for(int i=0;i<100000;i++){
             visualization_msgs::Marker marker;
             marker.header.frame_id = "odom";
             marker.header.stamp = ros::Time();
             marker.ns = "robotPose";
-            marker.id = 0;
+            marker.id = i;
             marker.type = visualization_msgs::Marker::SPHERE;
             marker.action = visualization_msgs::Marker::ADD;
+            marker.lifetime=ros::Duration(100.0);
             marker.pose.position.x = xRobot;
             marker.pose.position.y = yRobot;
             marker.pose.position.z = 0;
@@ -192,6 +217,7 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
             marker.color.g = 0.0;
             marker.color.b = 0.0;
             vis_pub3.publish( marker );
+            }
     ////////////////////////
 }
 
@@ -204,23 +230,22 @@ void occlusionKinectCallback(const occlusions::sideOcclusions::ConstPtr& msg)
    SmallRight= msg->smallRight;
    WallRight= msg->wallRight;
 
-//   ROS_INFO("BigLeft: %d", BigLeft);
-//   ROS_INFO("SmallLeft: %d", SmallLeft);
-//   ROS_INFO("WallLeft: %d", WallLeft);
-//   ROS_INFO("BigRight: %d", BigRight);
-//   ROS_INFO("SmallRight: %d", SmallRight);
-//   ROS_INFO("WallRight: %d", WallRight);
+   if (BigLeft && !BigRight && !SmallRight){followingAngle=-0.5236;}
+   if (SmallLeft && !BigLeft && !BigRight && !SmallRight){followingAngle=-0.2618;}
+   if (WallLeft && !WallRight){followingAngle=-0.2618;}
 
-
-
-   if (BigLeft){followingAngle=-0.5236;}
+   if (BigRight && !BigLeft && !SmallLeft){followingAngle=0.5236;}
+   if (SmallRight && !BigRight && !BigLeft && !SmallLeft){followingAngle=0.2618;}
+   if (WallRight && !WallLeft){followingAngle=0.2618;}
+////////////////////////////
+/*   if (BigLeft){followingAngle=-0.5236;}
    else if (SmallLeft){followingAngle=-0.2618;}
    else if (WallLeft){followingAngle=-0.2618;}
 
    if (BigRight){followingAngle=0.5236;}
    else if (SmallRight){followingAngle=0.2618;}
    else if (WallRight){followingAngle=0.2618;}
-
+*/
    //followingAngle //15 deg= 0.2618 ,30 deg= 0.5236 rad, 60 deg= 1.0472 rad
 }
 
@@ -248,10 +273,12 @@ void smallErrorCallback(const std_msgs::Float32::ConstPtr& msg)
 
 void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 {
+    bool validTrackLaser=false;
+
     cmd_vel.linear.x = 0.0;
     cmd_vel.angular.z = 0.0;
 
-   int nbOfTracksLaser=msg->people.size();
+   nbOfTracksLaser=msg->people.size();
 
    if (nbOfTracksLaser>0) {
        //Extract coordinates of first detected person
@@ -265,7 +292,17 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        //Calculate angle error
        AngleErrorLaser=atan2(yLaserPerson,xLaserPerson);
        //Calculate distance error
-       double DistanceErrorLaser=sqrt(pow(xLaserPerson,2)+pow(yLaserPerson,2));
+       DistanceErrorLaser=sqrt(pow(xLaserPerson,2)+pow(yLaserPerson,2));
+
+       YpathPointsLaser.insert(YpathPointsLaser.begin(),yLaserPerson);
+       if (YpathPointsLaser.size()>6){
+           yLast1Laser=YpathPointsLaser.at(5);
+           yLast2Laser=YpathPointsLaser.at(1);
+           xLast1Laser=xLaserPerson;
+           tempDistanceLaser=DistanceErrorLaser;
+           yDirectionLaser=yLast2Laser-yLast1Laser;
+           YpathPointsLaser.pop_back();
+       }
 
        if(!laser_obstacle_flag){
            cmd_vel.angular.z = AngleErrorLaser*KpAngle;
@@ -284,12 +321,15 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
            cmd_vel_pub.publish(cmd_vel);
        }
      }
+        validTrackLaser=true;
+        laserTrack=true;
 //////////////////////////////////marker
+        for(int i=0;i<100000;i++){
         visualization_msgs::Marker marker;
         marker.header.frame_id = "base_link";
         marker.header.stamp = ros::Time();
         marker.ns = "laser";
-        marker.id = 0;
+        marker.id = i;
         marker.type = visualization_msgs::Marker::SPHERE;
         marker.action = visualization_msgs::Marker::ADD;
         marker.pose.position.x = xLaserPerson;
@@ -307,9 +347,52 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
         marker.color.g = 1.0;
         marker.color.b = 0.0;
         vis_pub1.publish( marker );
+        }
 ////////////////////////
 
   }
+   else if(!validTrackKinect){
+       laserTrack=false;
+       //////////////////////////////////
+       validTrackLaser=false;
+       xPathLaser= xRobot+cos(orientationRobot+AngleErrorLaser)*tempDistanceLaser;
+       yPathLaser= yRobot+sin(orientationRobot+AngleErrorLaser)*tempDistanceLaser;
+       AngleErrorFollowLaser=PI-atan2(yPathLaser-yRobot,(xPathLaser-xRobot))-PI+orientationRobot;
+           if(abs(AngleErrorFollowLaser)>PI){
+               if(AngleErrorFollowLaser<0){AngleErrorFollowLaser=AngleErrorFollowLaser+2*PI;}
+               else{AngleErrorFollowLaser=AngleErrorFollowLaser-2*PI;}
+           }
+           tempDistanceFollowLaser=sqrt(pow(xPathLaser-xRobot,2)+pow(yPathLaser-yRobot,2));
+
+           //Get the number of tracks in the TrackArray
+           nbOfTracksLaser=msg->people.size();
+
+           //If at least 1 track, proceed
+           if (nbOfTracksLaser>0) {
+                validTrackLaser=true;
+           }
+
+           if (!laser_obstacle_flag){
+               ros::Time start= ros::Time::now();
+               while((ros::Time::now()-start<ros::Duration(round(tempDistanceFollowLaser/0.3))) && (!validTrackLaser) && (!laser_obstacle_flag)){
+               cmd_vel.linear.x = 0.3;
+               cmd_vel.angular.z=0.0;}
+
+               cmd_vel.linear.x = 0.0;
+               if(!validTrackLaser){
+               if(yDirectionLaser>0){cmd_vel.angular.z=0.15;}
+               else{cmd_vel.angular.z=-0.15;}
+               }
+           //Stop for loop
+        //   validTrack=true;
+           cmd_vel_pub.publish(cmd_vel);
+
+//        ROS_INFO("xLast1: %f", xLast1);
+//        ROS_INFO("yLast1: %f", yLast1);
+//        ROS_INFO("yDirection: %f", yDirection);
+   }
+       /////////////////////////////////////
+   }
 }
 
 void panCallback(const std_msgs::Float32::ConstPtr& msg)
@@ -320,7 +403,7 @@ void panCallback(const std_msgs::Float32::ConstPtr& msg)
 
 void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 {
-    bool validTrack=false;
+    bool validTrackKinect=false;
 
 
     //Initialize the twist
@@ -333,7 +416,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
     //If at least 1 track, proceed
     if (nbOfTracksKinect>0) {
         //looping throught the TrackArray
-        for(int i=0;i<nbOfTracksKinect && !validTrack;i++){
+        for(int i=0;i<nbOfTracksKinect && !validTrackKinect;i++){
             //oldest track which is older than the age threshold and above the confidence threshold
             if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold) && (msg->tracks[i].height<HeightMaxTheshold)){
 
@@ -396,19 +479,20 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                     cmd_vel.linear.x = command_speed;
                 }
                 //Stop for loop
-                validTrack=true;
+                validTrackKinect=true;
                 cmd_vel_pub.publish(cmd_vel);
              }
         }
     }
 
-
+    kinectTrack=true;
     //////////////////////////////////marker
+            for(int i=0;i<100000;i++){
             visualization_msgs::Marker marker;
             marker.header.frame_id = "base_link";
             marker.header.stamp = ros::Time();
             marker.ns = "kinect";
-            marker.id = 0;
+            marker.id = i;
             marker.type = visualization_msgs::Marker::SPHERE;
             marker.action = visualization_msgs::Marker::ADD;
             marker.pose.position.x = xperson;
@@ -426,11 +510,13 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             marker.color.g = 1.0;
             marker.color.b = 1.0;
             vis_pub2.publish( marker );
+            }
     ////////////////////////
     }
 
     else{
-            validTrack=false;
+            kinectTrack=false;
+            validTrackKinect=false;
             xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
             yPath= yRobot+sin(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
             AngleErrorFollow=PI-atan2(yPath-yRobot,(xPath-xRobot))-PI+orientationRobot;
@@ -446,22 +532,22 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 //If at least 1 track, proceed
                 if (nbOfTracksKinect>0) {
                     //looping throught the TrackArray
-                    for(int i=0;i<nbOfTracksKinect && !validTrack;i++){
+                    for(int i=0;i<nbOfTracksKinect && !validTrackKinect;i++){
                         //oldest track which is older than the age threshold and above the confidence threshold
                         if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold) && (msg->tracks[i].height<HeightMaxTheshold)){
-                        validTrack=true;
+                        validTrackKinect=true;
                         }
                     }
                 }
 
                 if (!laser_obstacle_flag){
                     ros::Time start= ros::Time::now();
-                    while((ros::Time::now()-start<ros::Duration(round(tempDistance/0.3))) && (!validTrack) && (!laser_obstacle_flag)){
+                    while((ros::Time::now()-start<ros::Duration(round(tempDistance/0.3))) && (!validTrackKinect) && (!laser_obstacle_flag)){
                     cmd_vel.linear.x = 0.3;
                     cmd_vel.angular.z=0.0;}
 
                     cmd_vel.linear.x = 0.0;
-                    if(!validTrack){
+                    if(!validTrackKinect){
                     if(yDirection>0){cmd_vel.angular.z=0.15;}
                     else{cmd_vel.angular.z=-0.15;}
                     }
@@ -472,7 +558,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
     //        ROS_INFO("xLast1: %f", xLast1);
     //        ROS_INFO("yLast1: %f", yLast1);
     //        ROS_INFO("yDirection: %f", yDirection);
-        }
+            }
         }
 
 
