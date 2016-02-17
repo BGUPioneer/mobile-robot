@@ -196,9 +196,9 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
           marker.pose.orientation.y = 0.0;
           marker.pose.orientation.z = 0.0;
           marker.pose.orientation.w = 1.0;
-          marker.scale.x = 0.3;
-          marker.scale.y = 0.3;
-          marker.scale.z = 0.1;
+          marker.scale.x = 0.2;
+          marker.scale.y = 0.2;
+          marker.scale.z = 0.2;
           marker.color.a = 1.0; // Don't forget to set the alpha!
           marker.color.r = 1.0;
           marker.color.g = 0.0;
@@ -337,7 +337,7 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
         laserTrack=true;
 
         //////////////////////////////////marker
-                for(int i=0;i<100000;i++){
+                for(int i=0;i<100;i++){
                 visualization_msgs::Marker marker;
                 marker.header.frame_id = "base_link";
                 marker.header.stamp = ros::Time();
@@ -512,7 +512,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             kinectTrack=true;
 
             //////////////////////////////////marker
-                    for(int i=0;i<100000;i++){
+                    for(int i=0;i<100;i++){
                     visualization_msgs::Marker marker;
                     marker.header.frame_id = "base_link";
                     marker.header.stamp = ros::Time();

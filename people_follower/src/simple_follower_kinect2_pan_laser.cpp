@@ -209,9 +209,9 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
             marker.pose.orientation.z = 0.0;
          //   marker.pose.orientation.w = orientationRobot;
             marker.pose.orientation.w = 1.0;
-            marker.scale.x = 0.3;
-            marker.scale.y = 0.3;
-            marker.scale.z = 0.1;
+            marker.scale.x = 0.2;
+            marker.scale.y = 0.2;
+            marker.scale.z = 0.2;
             marker.color.a = 1.0; // Don't forget to set the alpha!
             marker.color.r = 1.0;
             marker.color.g = 0.0;
@@ -324,12 +324,12 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
         validTrackLaser=true;
         laserTrack=true;
 //////////////////////////////////marker
-        for(int i=0;i<100000;i++){
+
         visualization_msgs::Marker marker;
         marker.header.frame_id = "base_link";
         marker.header.stamp = ros::Time();
         marker.ns = "laser";
-        marker.id = i;
+        marker.id = 0;
         marker.type = visualization_msgs::Marker::SPHERE;
         marker.action = visualization_msgs::Marker::ADD;
         marker.pose.position.x = xLaserPerson;
@@ -347,7 +347,7 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
         marker.color.g = 1.0;
         marker.color.b = 0.0;
         vis_pub1.publish( marker );
-        }
+
 ////////////////////////
 
   }
@@ -487,12 +487,11 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 
     kinectTrack=true;
     //////////////////////////////////marker
-            for(int i=0;i<100000;i++){
             visualization_msgs::Marker marker;
             marker.header.frame_id = "base_link";
             marker.header.stamp = ros::Time();
             marker.ns = "kinect";
-            marker.id = i;
+            marker.id = 0;
             marker.type = visualization_msgs::Marker::SPHERE;
             marker.action = visualization_msgs::Marker::ADD;
             marker.pose.position.x = xperson;
@@ -510,7 +509,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             marker.color.g = 1.0;
             marker.color.b = 1.0;
             vis_pub2.publish( marker );
-            }
+
     ////////////////////////
     }
 
