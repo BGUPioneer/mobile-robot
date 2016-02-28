@@ -56,6 +56,7 @@ class kinect2_pan_laser
          double KpDistance=0.2;
          double DistanceTarget=1.2;
          double MaxSpeed=0.5;
+         double MaxTurn=0.5;
          double min=1;
          double xp=0;
          double yp=0;
@@ -109,6 +110,8 @@ class kinect2_pan_laser
          bool laserTrack=false;
          std::vector<double> XpathPoints;
          std::vector<double> YpathPoints;
+         std::vector<double> AngleErrorPanHistory;
+
 
 public:
       kinect2_pan_laser()
@@ -148,7 +151,7 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
 
   ROS_INFO("xRobot: %f", xRobot);
   ROS_INFO("yRobot: %f", yRobot);
-  ROS_INFO("orientationRobot: %f", orientationRobot);
+//  ROS_INFO("orientationRobot: %f", orientationRobot);
   ROS_INFO("BigLeft: %d", BigLeft);
   ROS_INFO("SmallLeft: %d", SmallLeft);
   ROS_INFO("WallLeft: %d", WallLeft);
@@ -156,25 +159,29 @@ void poseCallback(const nav_msgs::Odometry::ConstPtr& msg)
   ROS_INFO("SmallRight: %d", SmallRight);
   ROS_INFO("WallRight: %d", WallRight);
   ROS_INFO("laser_obstacle_flag: %d", laser_obstacle_flag);
-  ROS_INFO("laser_angular_velocity: %f", laser_angular_velocity);
+//  ROS_INFO("laser_angular_velocity: %f", laser_angular_velocity);
   ROS_INFO("xLaser: %f", xLaserPerson);
   ROS_INFO("yLaser: %f", yLaserPerson);
-  ROS_INFO("AngleErrorLaser: %f", AngleErrorLaser);
-  ROS_INFO("KinectLaserError: %f", error);
+//  ROS_INFO("AngleErrorLaser: %f", AngleErrorLaser);
+//  ROS_INFO("KinectLaserError: %f", error);
   ROS_INFO("match: %d", kinectLaserMatch);
   ROS_INFO("Confidence: %f", confidence);
   ROS_INFO("Height: %f", height);
   ROS_INFO("distanceKinect: %f", distanceKinect);
-  ROS_INFO("age: %f", age);
-  ROS_INFO("AngleErrorKinect: %f", AngleErrorKinect);
+//  ROS_INFO("age: %f", age);
+//  ROS_INFO("AngleErrorKinect: %f", AngleErrorKinect);
   ROS_INFO("AngleErrorPan: %f", (AngleErrorPan*180)/ PI);
   ROS_INFO("xKinect: %f", xperson);
   ROS_INFO("yKinect: %f", yperson);
-  ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
+//  ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
   ROS_INFO("xPath: %f", xPath);
   ROS_INFO("yPath: %f", yPath);
   ROS_INFO("xFollow: %f", xFollow);
   ROS_INFO("yFollow: %f", yFollow);
+  ROS_INFO("tempDistance: 0");
+//  ROS_INFO("xLast1: 0");
+//  ROS_INFO("yLast1: 0");
+//  ROS_INFO("yDirection: 0");
   ROS_INFO("kinectTrack: %d", kinectTrack);
   ROS_INFO("laserTrack: %d", laserTrack);
 
@@ -314,7 +321,13 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
 //           ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
 
 
-       cmd_vel.angular.z =-AngleErrorFollow*KpAngle;
+   //    cmd_vel.angular.z =-AngleErrorFollow*KpAngle;
+
+       double angular_command;
+       angular_command=-AngleErrorFollow*KpAngle;
+       if(angular_command>MaxTurn){angular_command=MaxTurn;}
+       if(angular_command<-MaxTurn){angular_command=-MaxTurn;}
+       cmd_vel.angular.z = angular_command;
 
        DistanceErrorFollow=sqrt(pow(xFollow-xRobot,2)+pow(yFollow-yRobot,2));
        if (DistanceErrorLaser>DistanceTarget){ linearspeedLaser=(DistanceErrorFollow-DistanceTarget)*KpDistance;}
@@ -373,6 +386,10 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
 void panCallback(const std_msgs::Float32::ConstPtr& msg)
 {
     AngleErrorPan=msg->data;
+    AngleErrorPanHistory.insert(AngleErrorPanHistory.begin(),AngleErrorPan);
+    if(AngleErrorPanHistory.size()>3){
+        if(abs(AngleErrorPan)>2.0){AngleErrorPan=AngleErrorPanHistory.at(2);}
+        AngleErrorPanHistory.pop_back();}
 }
 
 void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
@@ -406,8 +423,10 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 
            //     xPath= xRobot-cos(PI-orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
            //     yPath= yRobot-sin(PI-orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
-                xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*distanceKinect;
-                yPath= yRobot+sin(orientationRobot+AngleErrorKinect)*distanceKinect;
+              xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*distanceKinect;
+              yPath= yRobot+sin(orientationRobot+AngleErrorKinect)*distanceKinect;
+          //      xPath= xRobot+cos(orientationRobot+AngleErrorPan)*distanceKinect;
+          //      yPath= yRobot+sin(orientationRobot+AngleErrorPan)*distanceKinect;
            //     xPath= xRobot+cos(orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
            //     yPath= yRobot+sin(orientationRobot+AngleSmallError+AngleErrorPan)*distanceKinect;
 //                ROS_INFO("xPath: %f", xPath);
@@ -419,9 +438,13 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
           //      YpathPoints.insert(YpathPoints.begin(),yperson);
 //                ROS_INFO("size: %d", XpathPoints.size());
 
-                if (XpathPoints.size()>51){
-                xFollow=XpathPoints.at(50);
-                yFollow=YpathPoints.at(50);
+
+                if (XpathPoints.size()>21){
+                    if(sqrt(pow(XpathPoints.at(20)-XpathPoints.at(19),2)+pow(YpathPoints.at(20)-YpathPoints.at(19),2))<1.0){
+
+                xFollow=XpathPoints.at(20);
+                yFollow=YpathPoints.at(20);
+                    }
 
 //                ROS_INFO("xFollow: %f", xFollow);
 //                ROS_INFO("yFollow: %f", yFollow);
@@ -471,9 +494,15 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 //                    ROS_INFO("angle: %f", PI-atan2(yFollow-yRobot,(xFollow-xRobot)));
 //                    ROS_INFO("AngleErrorFollow: %f", AngleErrorFollow);
 
-                    if(abs(followingAngle)<0.1){cmd_vel.angular.z = (-AngleErrorFollow+followingAngle)*KpAngle;}
-                    else {cmd_vel.angular.z = (-AngleErrorFollow+followingAngle)*KpAngleOcclusion;}
+                    double angular_command;
+                    if(abs(followingAngle)<0.1){angular_command = (-AngleErrorFollow+followingAngle)*KpAngle;}
+                    else {angular_command = (-AngleErrorFollow+followingAngle)*KpAngleOcclusion;}
             //    cmd_vel.angular.z =-AngleErrorFollow*KpAngle;
+
+                        if(angular_command>MaxTurn){angular_command=MaxTurn;}
+                        if(angular_command<-MaxTurn){angular_command=-MaxTurn;}
+                    cmd_vel.angular.z = angular_command;
+
 
                 DistanceErrorFollow=sqrt(pow(xFollow-xRobot,2)+pow(yFollow-yRobot,2));
                 if (DistanceErrorKinect>DistanceTarget){ linearspeedKinect=(DistanceErrorFollow-DistanceTarget)*KpDistance;}
