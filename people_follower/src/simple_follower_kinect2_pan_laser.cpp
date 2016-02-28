@@ -52,7 +52,7 @@ class kinect2_pan_laser
          double KpDistance=0.2;
          double DistanceTarget=1.2;
          double MaxSpeed=0.3;
-         double MaxTurn=0.5;
+         double MaxTurn=0.2;
          double min=1;
          double xp=0;
          double yp=0;
@@ -84,6 +84,7 @@ class kinect2_pan_laser
          double laser_angular_velocity=0;
          double laser_linear_velocity=0;
          double distanceKinect;
+         double DistanceError;
          double tempDistanceKinect;
          double xPath;
          double yPath;
@@ -458,7 +459,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 }else{kinectLaserMatch=false;}
 
                 //Calculate distance error
-                double DistanceError=distanceKinect-DistanceTarget;
+                DistanceError=distanceKinect-DistanceTarget;
 
                 //print to the console
 //                ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
@@ -479,8 +480,8 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                     if(abs(followingAngle)>0.1 && abs(AngleErrorKinect)<0.2){angular_command = (AngleErrorKinect+followingAngle)*KpAngleOcclusion;}
                  //   else {angular_command = AngleErrorKinect*KpAngle;}
 
-                     //   if(angular_command>MaxTurn){angular_command=MaxTurn;}
-                     //   if(angular_command<-MaxTurn){angular_command=-MaxTurn;}
+                        if(angular_command>MaxTurn){angular_command=MaxTurn;}
+                        if(angular_command<-MaxTurn){angular_command=-MaxTurn;}
                     cmd_vel.angular.z = angular_command;
 
 
@@ -534,7 +535,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 
     else{
             kinectTrack=false;
-            validTrackKinect=false;
+  //          validTrackKinect=false;
             xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
             yPath= yRobot+sin(orientationRobot+AngleErrorKinect)*tempDistanceKinect;
             AngleErrorFollow=PI-atan2(yPath-yRobot,(xPath-xRobot))-PI+orientationRobot;
@@ -547,7 +548,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 //Get the number of tracks in the TrackArray
                 nbOfTracksKinect=msg->tracks.size();
 
-                //If at least 1 track, proceed
+/*                //If at least 1 track, proceed
                 if (nbOfTracksKinect>0) {
                     //looping throught the TrackArray
                     for(int i=0;i<nbOfTracksKinect && !validTrackKinect;i++){
@@ -557,17 +558,21 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                         }
                     }
                 }
-
+*/
                 if (!laser_obstacle_flag){
-                    ros::Time start= ros::Time::now();
+                    ros::Time start= ros::Time::now();                   
                     while((ros::Time::now()-start<ros::Duration(round(tempDistance/0.3))) && (!validTrackKinect) && (!laser_obstacle_flag)){
-                    cmd_vel.linear.x = 0.3;
-                    cmd_vel.angular.z=0.0;}
+                    if (!laser_obstacle_flag)
+                        {cmd_vel.linear.x = 0.3;
+                        cmd_vel.angular.z=0.0;}
+                    else{cmd_vel.angular.z = laser_angular_velocity;
+                        cmd_vel.linear.x = laser_linear_velocity;}
+                    }
 
                     cmd_vel.linear.x = 0.0;
                     if(!validTrackKinect){
-                    if(yDirection>0){cmd_vel.angular.z=0.15;}
-                    else{cmd_vel.angular.z=-0.15;}
+                    if(yDirection>0){cmd_vel.angular.z=0.2;}
+                    else{cmd_vel.angular.z=-0.2;}
                     }
                 //Stop for loop
              //   validTrack=true;

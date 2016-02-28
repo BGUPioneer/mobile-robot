@@ -55,8 +55,8 @@ class kinect2_pan_laser
          double KpAngleOcclusion=0.2; //for changing the following angle while occlusion
          double KpDistance=0.2;
          double DistanceTarget=1.2;
-         double MaxSpeed=0.5;
-         double MaxTurn=0.5;
+         double MaxSpeed=0.3;
+         double MaxTurn=0.2;
          double min=1;
          double xp=0;
          double yp=0;

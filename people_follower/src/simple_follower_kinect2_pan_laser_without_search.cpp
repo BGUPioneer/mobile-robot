@@ -51,8 +51,8 @@ class kinect2_pan_laser
          double KpAngleOcclusion=0.2; //for changing the following angle while occlusion
          double KpDistance=0.2;
          double DistanceTarget=1.2;
-         double MaxSpeed=0.5;
-         double MaxTurn=0.5;
+         double MaxSpeed=0.3;
+         double MaxTurn=0.2;
          double min=1;
          double xp=0;
          double yp=0;
@@ -84,6 +84,7 @@ class kinect2_pan_laser
          double laser_angular_velocity=0;
          double laser_linear_velocity=0;
          double distanceKinect;
+         double DistanceError;
          double tempDistanceKinect;
          double xPath;
          double yPath;
@@ -370,7 +371,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 }else{kinectLaserMatch=false;}
 
                 //Calculate distance error
-                double DistanceError=distanceKinect-DistanceTarget;
+                DistanceError=distanceKinect-DistanceTarget;
 
                 //print to the console
 //                ROS_INFO("Confidence: %f", msg->tracks[i].confidence);
