@@ -52,7 +52,7 @@ class kinect2_pan_laser
          double KpDistance=0.2;
          double DistanceTarget=1.2;
          double MaxSpeed=0.3;
-         double MaxTurn=0.2;
+         double MaxTurn=0.5;//0.2
          double min=1;
          double xp=0;
          double yp=0;
@@ -439,8 +439,8 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                 confidence=msg->tracks[i].confidence;
 
                 YpathPoints.insert(YpathPoints.begin(),yperson);
-                if (YpathPoints.size()>10){
-                    yLast1=YpathPoints.at(9);
+                if (YpathPoints.size()>5){
+                    yLast1=YpathPoints.at(4);
                     yLast2=YpathPoints.at(1);
                     xLast1=xperson;
                     tempDistanceKinect=distanceKinect;
@@ -533,7 +533,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
     ////////////////////////
     }
 
-    else{
+    else if(!validTrackLaser){
             kinectTrack=false;
   //          validTrackKinect=false;
             xPath= xRobot+cos(orientationRobot+AngleErrorKinect)*tempDistanceKinect;

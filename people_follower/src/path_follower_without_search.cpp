@@ -268,8 +268,6 @@ void smallErrorCallback(const std_msgs::Float32::ConstPtr& msg)
 
 void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& msg)
 {
-    bool validTrackLaser=false;
-
     cmd_vel.linear.x = 0.0;
     cmd_vel.angular.z = 0.0;
 
@@ -349,7 +347,6 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
        }
       }
      }
-        validTrackLaser=true;
         laserTrack=true;
 
         //////////////////////////////////marker
@@ -572,32 +569,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
         }
 
     }
-    else if(!laserTrack){
-        kinectTrack=false;
-    //////////////////////add search
-        if (!laser_obstacle_flag){
-            ros::Time start= ros::Time::now();
-            while((ros::Time::now()-start<ros::Duration(6)) && (!kinectTrack) && (!laser_obstacle_flag)){
-            if (!laser_obstacle_flag)
-                {cmd_vel.linear.x = 0.3;
-                cmd_vel.angular.z=0.0;}
-            else{cmd_vel.angular.z = laser_angular_velocity;
-                cmd_vel.linear.x = laser_linear_velocity;}
-            }
-
-            cmd_vel.linear.x = 0.0;
-            if(!kinectTrack){
-            cmd_vel.angular.z=-0.2;
-            }
-        //Stop for loop
-     //   validTrack=true;
-        cmd_vel_pub.publish(cmd_vel);
-
-//        ROS_INFO("xLast1: %f", xLast1);
-//        ROS_INFO("yLast1: %f", yLast1);
-//        ROS_INFO("yDirection: %f", yDirection);
-    }
-    ////////////////////////////end search
+    else{kinectTrack=false;
     }
 }
 
@@ -615,14 +587,6 @@ int main(int argc, char **argv){
     ros::spin();
     return 0;
 }
-
-
-
-
-
-
-
-
 
 
 
