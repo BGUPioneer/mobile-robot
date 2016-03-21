@@ -52,7 +52,7 @@ class kinect2_pan_laser
          double KpDistance=0.2;
          double DistanceTarget=1.2;
          double MaxSpeed=0.3;
-         double MaxTurn=0.5;//0.2
+         double MaxTurn=0.2;//0.2
          double min=1;
          double xp=0;
          double yp=0;
@@ -364,7 +364,7 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
    else if(!validTrackKinect){
        laserTrack=false;
        //////////////////////////////////
-       validTrackLaser=false;
+/*       validTrackLaser=false;
        xPathLaser= xRobot+cos(orientationRobot+AngleErrorLaser)*tempDistanceLaser;
        yPathLaser= yRobot+sin(orientationRobot+AngleErrorLaser)*tempDistanceLaser;
        AngleErrorFollowLaser=PI-atan2(yPathLaser-yRobot,(xPathLaser-xRobot))-PI+orientationRobot;
@@ -401,6 +401,7 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
 //        ROS_INFO("yLast1: %f", yLast1);
 //        ROS_INFO("yDirection: %f", yDirection);
    }
+*/
        /////////////////////////////////////
    }
 }

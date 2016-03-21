@@ -56,7 +56,7 @@ class kinect2_pan_laser
          double KpDistance=0.2;
          double DistanceTarget=1.2;
          double MaxSpeed=0.3;
-         double MaxTurn=0.5;//0.2
+         double MaxTurn=0.2;//0.2
          double min=1;
          double xp=0;
          double yp=0;
@@ -348,26 +348,27 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
 
        }
       }
+     cmd_vel_pub.publish(cmd_vel);
      }
         validTrackLaser=true;
         laserTrack=true;
 
         //////////////////////////////////marker
-                for(int i=0;i<100;i++){
+
                 visualization_msgs::Marker marker;
                 marker.header.frame_id = "base_link";
                 marker.header.stamp = ros::Time();
                 marker.ns = "laser";
-                marker.id = i;
+                marker.id = 0;
                 marker.type = visualization_msgs::Marker::SPHERE;
                 marker.action = visualization_msgs::Marker::ADD;
-                marker.pose.position.x = xFollow;
-                marker.pose.position.y = yFollow;
+                marker.pose.position.x = xLaserPerson;
+                marker.pose.position.y = yLaserPerson;
                 marker.pose.position.z = 0;
                 marker.pose.orientation.x = 0.0;
                 marker.pose.orientation.y = 0.0;
                 marker.pose.orientation.z = 0.0;
-                marker.pose.orientation.w = 1.0;
+                marker.pose.orientation.w = AngleErrorLaser;
                 marker.scale.x = 0.1;
                 marker.scale.y = 0.1;
                 marker.scale.z = 0.1;
@@ -376,12 +377,13 @@ void LaserLegsCallback(const people_msgs::PositionMeasurementArray::ConstPtr& ms
                 marker.color.g = 1.0;
                 marker.color.b = 0.0;
                 vis_pub1.publish( marker );
-                }
+
         ////////////////////////
-    }
+
+   }
    else{laserTrack=false;}
 
-   cmd_vel_pub.publish(cmd_vel);
+  // cmd_vel_pub.publish(cmd_vel);
 }
 
 
@@ -544,21 +546,20 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
             kinectTrack=true;
 
             //////////////////////////////////marker
-                    for(int i=0;i<100;i++){
                     visualization_msgs::Marker marker;
                     marker.header.frame_id = "base_link";
                     marker.header.stamp = ros::Time();
                     marker.ns = "kinect";
-                    marker.id = i;
+                    marker.id = 0;
                     marker.type = visualization_msgs::Marker::SPHERE;
                     marker.action = visualization_msgs::Marker::ADD;
-                    marker.pose.position.x = xFollow;
-                    marker.pose.position.y = yFollow;
+                    marker.pose.position.x = xperson;
+                    marker.pose.position.y = yperson;
                     marker.pose.position.z = 0;
                     marker.pose.orientation.x = 0.0;
                     marker.pose.orientation.y = 0.0;
                     marker.pose.orientation.z = 0.0;
-                    marker.pose.orientation.w = 1.0;
+                    marker.pose.orientation.w = AngleErrorKinect;
                     marker.scale.x = 0.1;
                     marker.scale.y = 0.1;
                     marker.scale.z = 0.1;
@@ -567,17 +568,18 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
                     marker.color.g = 1.0;
                     marker.color.b = 1.0;
                     vis_pub2.publish( marker );
-                    }
+
             ////////////////////////
         }
 
     }
-    else if(!laserTrack){
+    else {
         kinectTrack=false;
     //////////////////////add search
-        if (!laser_obstacle_flag){
+
+    if (!laser_obstacle_flag && !laserTrack){
             ros::Time start= ros::Time::now();
-            while((ros::Time::now()-start<ros::Duration(6)) && (!kinectTrack) && (!laser_obstacle_flag)){
+            while((ros::Time::now()-start<ros::Duration(4)) && (!kinectTrack) && (!laser_obstacle_flag)){
             if (!laser_obstacle_flag)
                 {cmd_vel.linear.x = 0.3;
                 cmd_vel.angular.z=0.0;}
@@ -597,6 +599,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
 //        ROS_INFO("yLast1: %f", yLast1);
 //        ROS_INFO("yDirection: %f", yDirection);
     }
+
     ////////////////////////////end search
     }
 }
