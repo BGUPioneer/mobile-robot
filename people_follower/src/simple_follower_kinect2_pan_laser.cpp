@@ -59,7 +59,7 @@ class kinect2_pan_laser
          double timepreviousmeasure=0;
          double AgeThreshold=0;
          double ConfidenceTheshold=1.1;
-         double HeightTheshold=1.4;
+         double HeightTheshold=1.3;
          double HeightMaxTheshold=2;
          double AngleErrorPan=0;
          bool smallError=false;

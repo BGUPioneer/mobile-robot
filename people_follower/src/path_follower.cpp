@@ -63,7 +63,8 @@ class kinect2_pan_laser
          double timepreviousmeasure=0;
          double AgeThreshold=0;
          double ConfidenceTheshold=1.1;
-         double HeightTheshold=1.4;
+         double HeightTheshold=1.3;
+         double HeightMaxTheshold=2;
          double AngleErrorPan=0;
          bool smallError=false;
          double smallErrorThreshold=0.01;
@@ -414,7 +415,7 @@ void personCallback(const opt_msgs::TrackArray::ConstPtr& msg)
         //looping throught the TrackArray
         for(int i=0;i<nbOfTracksKinect && !validTrack;i++){
             //oldest track which is older than the age threshold and above the confidence threshold
-            if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold)){
+            if ((msg->tracks[i].age>AgeThreshold) && (msg->tracks[i].confidence>ConfidenceTheshold) && (msg->tracks[i].height>HeightTheshold) && (msg->tracks[i].height<HeightMaxTheshold)){
 
                 //Calculate angle error
                 distanceKinect=msg->tracks[i].distance;
